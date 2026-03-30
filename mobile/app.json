@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Unchi Udaan",
+    "slug": "unchi-udaan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#16A34A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.unchiudaan.student"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#16A34A"
+      },
+      "package": "com.unchiudaan.student"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "feefd24a-18b8-4ea4-8726-b3ac385c30c5"
+      }
+    },
+    "owner": "shivang98"
+  }
+}

@@ -1,0 +1,410 @@
+You are a senior full-stack engineer.
+Build a complete production-ready web app called “Unchi Udaan” – an educational learning platform – using:
+
+Frontend: React (with React Router, Context/Redux or similar for state, Axios/Fetch for API calls)
+
+Backend: Node.js + Express
+
+Database: SQL (use PostgreSQL or MySQL – whichever is easiest in this Repl, but keep it abstracted so it can be switched).
+
+Auth: JWT-based authentication + Google Login (OAuth2) + email OTP verification via SMTP
+
+Payments: Razorpay integration
+
+PDFs: Server-side generation of PDFs for quiz questions & quiz results
+
+All secrets/keys must be read from .env only (no hardcoding).
+
+1. Project structure
+
+Create a monorepo-style structure:
+
+/ frontend/         # React app
+/ backend/          # Node/Express app
+
+
+Backend structure suggestion:
+
+backend/
+  package.json
+  src/
+    app.js
+    config/
+      db.js        # SQL connection + pooling
+      env.js       # loads environment variables
+      auth.js      # JWT / Google config
+      mailer.js    # SMTP config (Nodemailer)
+      razorpay.js  # Razorpay instance
+    middleware/
+      authMiddleware.js      # JWT verification
+      roleMiddleware.js      # checks admin/instructor/user
+      errorHandler.js
+    models/       # SQL queries or ORM models
+      User.js
+      Course.js
+      Quiz.js
+      Question.js
+      QuizAttempt.js
+      Payment.js
+      JobPost.js
+      StudyMaterial.js
+      CurrentAffair.js
+      Coupon.js
+    routes/
+      authRoutes.js
+      userRoutes.js
+      adminRoutes.js
+      instructorRoutes.js
+      quizRoutes.js
+      courseRoutes.js
+      paymentRoutes.js
+      jobRoutes.js
+      contentRoutes.js      # study materials, current affairs
+    controllers/
+      authController.js
+      userController.js
+      adminController.js
+      instructorController.js
+      quizController.js
+      courseController.js
+      paymentController.js
+      jobController.js
+      contentController.js
+    utils/
+      pdfGenerator.js      # reusable PDF creation helpers
+      pagination.js
+      validators.js
+
+
+Frontend structure suggestion:
+
+frontend/
+  package.json
+  src/
+    index.js
+    App.js
+    api/              # axios instances, API helpers
+    context/ or store/
+      AuthContext.js or authSlice.js
+    components/
+      layout/
+        Navbar.jsx
+        Footer.jsx
+        Sidebar.jsx
+      ui/             # buttons, cards, etc.
+    pages/
+      public/
+        Home.jsx
+        Courses.jsx
+        Contact.jsx
+        About.jsx
+        JobPortal.jsx
+        CurrentAffairs.jsx
+      auth/
+        Login.jsx
+        Register.jsx
+        VerifyOtp.jsx
+      user/
+        UserDashboard.jsx
+        MyCourses.jsx
+        MyQuizzes.jsx
+        QuizAttemptPage.jsx   # time-based quiz UI
+      instructor/
+        InstructorDashboard.jsx
+        ManageCourses.jsx
+        ManageQuizzes.jsx
+        ManageStudyMaterials.jsx
+        ManageCurrentAffairs.jsx
+      admin/
+        AdminDashboard.jsx
+        ManageUsers.jsx     # only admin can manage users
+        ManageJobs.jsx
+        ManageCoupons.jsx
+    routes/
+      ProtectedRoute.jsx
+      RoleProtectedRoute.jsx
+
+
+Keep role-based UIs separate: admin, instructor, user so later modifications are easy.
+
+2. Roles & access control
+
+Implement 3 roles: admin, instructor, user.
+
+Both admin and instructor can:
+
+Create / edit / delete courses
+
+Upload and manage study materials
+
+Create / edit quizzes & questions
+
+Create / edit current affairs
+
+Admin only can additionally:
+
+Manage all users (view list, change roles, enable/disable accounts)
+
+Manage job posts (CRUD)
+
+Manage coupons
+
+Users can:
+
+View and purchase courses/quizzes/materials
+
+Attempt quizzes
+
+View study materials & current affairs
+
+View job portal
+
+Implement role-based middleware on backend routes and ProtectedRoute / RoleProtectedRoute on frontend.
+
+3. Auth, OTP, JWT, Google login
+
+Registration:
+
+User registers with name, email, password.
+
+Hash passwords with bcrypt.
+
+On register, send OTP to email using SMTP (Nodemailer). SMTP config (host, port, user, pass) comes from .env.
+
+Store OTP with expiry in DB (or separate verification table/field).
+
+Verify OTP route to activate account.
+
+Login:
+
+Local login (email + password) → issue JWT (access token).
+
+Store JWT in HTTP-only cookie or in memory (plus refresh token if you want) – choose secure pattern and document it.
+
+Implement Google login using Google OAuth2:
+
+Use Passport.js or a clean library.
+
+On Google login success, create user if not exists, then issue JWT.
+
+Include /auth/me endpoint to fetch current user and role.
+
+4. Payments: Razorpay integration
+
+Integrate Razorpay for payments (test mode).
+
+Keep these env vars in .env: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET.
+
+Allow Buy Now for:
+
+Courses
+
+Quizzes
+
+Study materials
+
+Any other paid items
+
+Features:
+
+Each item has:
+
+original price
+
+discount price
+
+optional coupon support
+
+Implement coupon codes:
+
+Admin creates coupons (code, discount type %, flat, expiry, usage limit).
+
+Validate coupon on backend before creating Razorpay order.
+
+Store each successful payment in a Payments table with:
+
+user_id, item_type, item_id, amount, status, Razorpay order/payment IDs, timestamp.
+
+After payment success:
+
+Mark user as enrolled / purchased in respective tables.
+
+Allow user access to content/quiz accordingly.
+
+5. Quizzes (random, time-based, PDFs)
+
+Quiz features:
+
+Admin/instructor can:
+
+Create quiz
+
+Add multiple questions (MCQ with 4 options, correct option, marks, etc.)
+
+Mark quiz as paid or free
+
+Set time duration for quiz (e.g., 15 min, 30 min)
+
+For users:
+
+Start quiz → backend sends randomized questions each time (shuffle).
+
+Enforce time-based quiz:
+
+On start, backend returns start time + duration.
+
+Frontend shows countdown timer.
+
+On expiry, auto-submit answers.
+
+Store quiz attempts:
+
+user_id, quiz_id, score, percentage, number of correct/incorrect, started_at, completed_at, etc.
+
+PDF export:
+
+Backend utility pdfGenerator.js to generate:
+
+Quiz questions PDF
+
+For admin/instructor: include quiz title, all questions, options, mark per question.
+
+Quiz result PDF per user
+
+Includes user name, quiz title, score, percentage, date/time, maybe detailed question-wise report.
+
+Use a Node PDF library (like pdfkit or pdfmake). Provide API endpoints:
+
+GET /quizzes/:id/export-questions → returns PDF
+
+GET /quizzes/:id/attempts/:attemptId/export-result → returns PDF
+
+6. Job portal
+
+Admin can create and manage government job posts:
+
+title, department, location, last_date, apply_link, description, category, created_at, updated_at.
+
+Users can:
+
+View list with filters (search by title, department, location, etc.)
+
+Click to open external apply link.
+
+7. Current Affairs & Study Materials
+
+Current Affairs:
+
+Admin/instructor can add daily/weekly current affairs with title, description, date, tags.
+
+User can view in a list (with filter by date/month/category).
+
+Study Materials:
+
+Admin/instructor can upload PDFs, notes, or links.
+
+Each material can be free or paid.
+
+If paid, integrate with Razorpay & coupons as per the generic payment flow.
+
+Provide category, subject, and tags so users can filter.
+
+8. Live class (Coming soon)
+
+Add UI in frontend for Live Classes:
+
+Show page/card with “Coming Soon” label.
+
+No backend functionality needed yet, just placeholder routes/components.
+
+9. Common pages & features
+
+Public pages:
+
+Home (hero section, highlight platform features, CTA buttons)
+
+Courses listing
+
+About Us
+
+Contact (store messages in DB + optionally send email to admin)
+
+Dashboards:
+
+Separate dashboards for user, instructor, admin (different nav menu but reuse components when possible).
+
+10. Theming & UI
+
+Use a color theme inspired by Razorpay homepage in the screenshot:
+
+Main background: very light bluish/white.
+
+Primary color: bold bright blue for CTAs, buttons, and highlights.
+
+Use gradients and modern card design similar to Razorpay’s style.
+
+Clean, modern, responsive layout with consistent spacing and typography.
+
+Add:
+
+Responsive navbar with login/sign up buttons.
+
+Toast/notification system for success/error messages.
+
+Loading states and error states for all async operations.
+
+11. Environment variables
+
+Create a .env.example file listing all needed variables, for example:
+
+PORT
+
+DATABASE_URL or individual DB vars
+
+JWT_SECRET
+
+SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
+
+GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL
+
+RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
+
+Any other required configuration
+
+Actual .env must not be committed; code must always read from process.env.
+
+12. What to output
+
+In this Repl, please:
+
+Set up the full folder structure (frontend + backend).
+
+Initialize package.json files with all necessary dependencies.
+
+Implement:
+
+Core auth (JWT, Google login, email OTP)
+
+Role-based middleware
+
+Core CRUD APIs (users, courses, quizzes, jobs, study materials, current affairs, coupons)
+
+Payment flow with Razorpay (dummy/test-mode ready)
+
+PDF generation endpoints for quiz questions and quiz results
+
+Time-based quiz logic
+
+Build a basic but pleasant React UI matching the theme and with working routes & forms.
+
+Add basic SQL schema (either as migration files or SQL scripts) for all key tables.
+
+Provide clear README with:
+
+How to run backend & frontend
+
+How to set up .env
+
+How to run database migrations or create tables
+
+How to test main features (auth, quiz, payment, PDFs, job portal).
