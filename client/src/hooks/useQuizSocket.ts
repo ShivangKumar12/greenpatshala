@@ -2,8 +2,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL =
-    (import.meta as any).env?.VITE_BACKEND_URL || window.location.origin;
+// Always connect to the same origin (Hostinger CDN / Nginx proxies /socket.io/ to Node)
+const SOCKET_URL = window.location.origin;
 
 /**
  * Connects to the Socket.io server, joins a quiz room,
@@ -22,11 +22,16 @@ export function useQuizSocket(quizId: string | number | undefined) {
 
         const id = String(quizId);
 
-        // Create socket connection (auto-reconnect enabled by default)
+        // Production-resilient socket connection
         const socket = io(SOCKET_URL, {
+            path: '/socket.io',
             transports: ['websocket', 'polling'],
-            reconnectionAttempts: 10,
-            reconnectionDelay: 2000,
+            reconnection: true,
+            reconnectionAttempts: Infinity,   // never give up during a quiz
+            reconnectionDelay: 1000,          // start at 1s
+            reconnectionDelayMax: 10000,      // cap at 10s (exponential backoff)
+            randomizationFactor: 0.5,         // jitter to avoid thundering herd
+            timeout: 20000,                   // connection timeout
         });
 
         socketRef.current = socket;
@@ -37,6 +42,11 @@ export function useQuizSocket(quizId: string | number | undefined) {
         });
 
         socket.on('disconnect', () => {
+            setIsConnected(false);
+        });
+
+        socket.on('connect_error', () => {
+            // Silently handle — socket.io will auto-reconnect
             setIsConnected(false);
         });
 

@@ -13,7 +13,7 @@ function normalizeCourse(c: any) {
   return {
     ...c,
     thumbnail: c.thumbnail || null,
-    videoUrl: c.videoUrl || c.video_url || null,
+    videoUrl: c.videoUrl || null,
     originalPrice: c.originalPrice ? Number(c.originalPrice) : null,
     discountPrice: c.discountPrice ? Number(c.discountPrice) : null,
     rating: c.rating ? Number(c.rating) : 0,
@@ -88,7 +88,7 @@ export const getCourses = async (req: Request, res: Response): Promise<Response>
     });
   } catch (error: any) {
     console.error('[GET COURSES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -122,7 +122,7 @@ export const getCourseCategories = async (req: Request, res: Response): Promise<
     });
   } catch (error: any) {
     console.error('[GET COURSE CATEGORIES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -166,7 +166,7 @@ export const getCourseById = async (req: Request, res: Response): Promise<Respon
     });
   } catch (error: any) {
     console.error('[GET COURSE BY ID ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -255,7 +255,7 @@ export const getCourseModules = async (req: Request, res: Response): Promise<Res
     });
   } catch (error: any) {
     console.error('[GET COURSE MODULES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -331,7 +331,7 @@ export const getCourseAccess = async (req: Request, res: Response): Promise<Resp
     });
   } catch (error: any) {
     console.error('[GET COURSE ACCESS ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -422,14 +422,14 @@ export const enrollInCourse = async (req: Request, res: Response): Promise<Respo
         id: course.id,
         title: course.title,
         thumbnail: course.thumbnail,
-        videoUrl: course.videoUrl || course.video_url,
+        videoUrl: course.videoUrl,
         originalPrice: course.originalPrice ? Number(course.originalPrice) : null,
         discountPrice: course.discountPrice ? Number(course.discountPrice) : null,
       },
     });
   } catch (error: any) {
     console.error('[ENROLL COURSE ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -488,7 +488,7 @@ export const getMyCourses = async (req: Request, res: Response): Promise<Respons
     });
   } catch (error: any) {
     console.error('[GET MY COURSES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -526,7 +526,7 @@ export const getFeaturedCourses = async (req: Request, res: Response): Promise<R
     });
   } catch (error: any) {
     console.error('[GET FEATURED COURSES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -573,8 +573,8 @@ export const uploadCourseThumbnail = async (req: Request, res: Response): Promis
       });
     }
 
-    // Build file URL
-    const fileUrl = req.file.path.replace(/\\/g, '/').replace(/^uploads/, '/uploads');
+    // Build file URL (deterministic path, matches adminCourseController pattern)
+    const fileUrl = `/uploads/courses/thumbnails/${req.file.filename}`;
 
     return res.status(201).json({
       success: true,

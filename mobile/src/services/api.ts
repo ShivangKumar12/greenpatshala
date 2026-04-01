@@ -1,13 +1,11 @@
-// API Service - Axios instance connected to existing Express.js backend
+// API Service - Axios instance connected to GreenPatshala Express.js backend
 import axios from 'axios';
-import { Platform } from 'react-native';
 import { storage } from './storage';
 
 // ============================================
 // API CONFIGURATION
 // ============================================
-// Hardcoded API URL for seamless independent execution
-const BASE_URL = 'https://2a46-2409-40d1-43f-3923-7cc4-37cf-f301-c392.ngrok-free.app/api';
+const BASE_URL = 'https://greenpatshala.in/api';
 console.log('📡 API Base URL:', BASE_URL);
 
 const api = axios.create({
@@ -35,7 +33,6 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response?.status === 401) {
-            // Token expired or invalid - clear storage
             await storage.clearAll();
         }
         return Promise.reject(error);
@@ -63,6 +60,8 @@ export const authAPI = {
     changePassword: (data: { currentPassword: string; newPassword: string }) =>
         api.put('/auth/change-password', data),
     logout: () => api.post('/auth/logout'),
+    updateNotificationPreferences: (data: any) =>
+        api.put('/auth/notification-preferences', data),
 };
 
 // ============================================
@@ -73,9 +72,19 @@ export const coursesAPI = {
     getById: (id: number) => api.get(`/courses/${id}`),
     getCategories: () => api.get('/courses/categories/list'),
     getModules: (id: number) => api.get(`/courses/${id}/modules`),
+    getLessons: (courseId: number) => api.get(`/lessons/course/${courseId}`),
     getMyCourses: () => api.get('/courses/my/list'),
     getAccess: (id: number) => api.get(`/courses/${id}/access`),
     enroll: (id: number) => api.post(`/courses/${id}/enroll`),
+};
+
+// ============================================
+// LESSONS API
+// ============================================
+export const lessonsAPI = {
+    getByCourse: (courseId: number) => api.get(`/lessons/course/${courseId}`),
+    updateProgress: (lessonId: number, data: any) =>
+        api.post(`/lessons/${lessonId}/progress`, data),
 };
 
 // ============================================
@@ -92,6 +101,20 @@ export const quizzesAPI = {
 };
 
 // ============================================
+// TEST SERIES API (Subject → Chapter → Tests)
+// ============================================
+export const testSeriesAPI = {
+    getSubjects: () => api.get('/test-subjects'),
+    getPublicSubjects: () => api.get('/test-subjects/public'),
+    getSubjectWithChapters: (subjectId: number) =>
+        api.get(`/test-subjects/${subjectId}/chapters`),
+    getChapterTests: (chapterId: number) =>
+        api.get(`/test-chapters/${chapterId}/tests`),
+    getTestById: (testId: number) =>
+        api.get(`/tests/${testId}`),
+};
+
+// ============================================
 // STUDY MATERIALS API
 // ============================================
 export const studyMaterialsAPI = {
@@ -99,6 +122,7 @@ export const studyMaterialsAPI = {
     getById: (id: number) => api.get(`/study-materials/${id}`),
     incrementDownload: (id: number) => api.post(`/study-materials/${id}/download`),
     getPurchased: () => api.get('/study-materials/purchased'),
+    getPurchasedIds: () => api.get('/study-materials/purchased/ids'),
 };
 
 // ============================================
@@ -130,6 +154,19 @@ export const paymentsAPI = {
     createStudyMaterialOrder: (materialId: number, data?: any) =>
         api.post(`/payment/study-material/${materialId}/create-order`, data),
     verifyPayment: (data: any) => api.post('/payment/verify', data),
+    applyCoupon: (data: { code: string; itemType: string; itemId: number }) =>
+        api.post('/payment/apply-coupon', data),
+};
+
+// ============================================
+// CERTIFICATES API
+// ============================================
+export const certificatesAPI = {
+    getMyCertificates: () => api.get('/certificates/my'),
+    getCertificateById: (id: string) => api.get(`/certificates/${id}`),
+    downloadPDF: (id: string) => api.get(`/certificates/${id}/download`, {
+        responseType: 'blob',
+    }),
 };
 
 // ============================================
@@ -146,6 +183,13 @@ export const feedbackAPI = {
 // ============================================
 export const settingsAPI = {
     getPublic: () => api.get('/settings/public'),
+};
+
+// ============================================
+// TESTIMONIALS API
+// ============================================
+export const testimonialsAPI = {
+    getPublic: () => api.get('/testimonials/public'),
 };
 
 export default api;

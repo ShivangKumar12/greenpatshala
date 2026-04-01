@@ -30,6 +30,7 @@ import {
   Ticket,
   DollarSign,
   Loader2,
+  Smartphone,
 } from 'lucide-react';
 
 // Import sub-components
@@ -47,6 +48,7 @@ import CertificateTemplates from './components/CertificateTemplates';
 import SubjectsManagement from './components/SubjectsManagement';
 import ChaptersManagement from './components/ChaptersManagement';
 import CategoriesManagement from './components/CategoriesManagement';
+import MobileAppSettings from './components/MobileAppSettings';
 
 // Import API services
 import { getAdminStats, getRecentPayments, getChartData, type DashboardStats, type RecentPayment } from '@/services/adminApi';
@@ -226,6 +228,14 @@ export default function AdminDashboard() {
       color: 'text-amber-600',
       bgColor: 'bg-amber-50 dark:bg-amber-950',
     },
+    {
+      title: 'Mobile App',
+      description: 'Notifications, banners & ads',
+      icon: Smartphone,
+      tab: 'mobile-app',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 dark:bg-violet-950',
+    },
   ];
 
   if (loading) {
@@ -294,6 +304,7 @@ export default function AdminDashboard() {
                 <TabsTrigger value="subjects" className="rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 hover:text-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:scale-105">Subjects</TabsTrigger>
                 <TabsTrigger value="chapters" className="rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 hover:text-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:scale-105">Chapters</TabsTrigger>
                 <TabsTrigger value="categories-mgmt" className="rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 hover:text-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:scale-105">Categories</TabsTrigger>
+                <TabsTrigger value="mobile-app" className="rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 hover:text-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:scale-105">📱 Mobile App</TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -643,6 +654,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="categories-mgmt">
             <CategoriesManagement />
+          </TabsContent>
+
+          <TabsContent value="mobile-app">
+            <MobileAppSettings />
           </TabsContent>
         </Tabs>
       </div>

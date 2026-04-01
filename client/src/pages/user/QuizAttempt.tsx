@@ -274,6 +274,10 @@ export default function QuizAttempt() {
         throw new Error("Failed to create payment order");
       }
 
+      // ✅ FIX: Close the Dialog BEFORE opening Razorpay
+      // The Radix Dialog overlay (z-50) blocks clicks on the Razorpay iframe
+      setShowPaymentModal(false);
+
       // Razorpay options
       const options = {
         key: orderData.keyId,
@@ -342,7 +346,6 @@ export default function QuizAttempt() {
           error?.response?.data?.message || "Failed to initiate payment",
         variant: "destructive",
       });
-    } finally {
       setProcessingPayment(false);
     }
   };
@@ -576,30 +579,84 @@ export default function QuizAttempt() {
                 {currentQ.question}
               </h2>
 
-              <RadioGroup
-                value={currentAnswer?.selectedOption?.toString()}
-                onValueChange={(value) =>
-                  handleAnswerChange(currentQ.id, parseInt(value, 10))
-                }
-              >
-                {currentQ.options.map((option, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent cursor-pointer"
-                  >
-                    <RadioGroupItem
-                      value={index.toString()}
-                      id={`option-${index}`}
-                    />
-                    <Label
-                      htmlFor={`option-${index}`}
-                      className="flex-1 cursor-pointer"
-                    >
-                      {option}
-                    </Label>
+              {/* Match the Column rendering */}
+              {currentQ.options && typeof currentQ.options === 'object' && !Array.isArray(currentQ.options) && (currentQ.options as any).columnA ? (
+                <div className="space-y-4">
+                  {/* Column A / Column B display */}
+                  <div className="grid grid-cols-2 gap-4 border rounded-lg p-4 bg-muted/30">
+                    <div>
+                      <p className="font-semibold text-sm text-muted-foreground mb-2">सूची-I (Column A)</p>
+                      {((currentQ.options as any).columnA || []).map((item: string, i: number) => (
+                        <p key={i} className="py-1 text-sm font-medium">
+                          {String.fromCharCode(65 + i)}. {item}
+                        </p>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-muted-foreground mb-2">सूची-II (Column B)</p>
+                      {((currentQ.options as any).columnB || []).map((item: string, i: number) => (
+                        <p key={i} className="py-1 text-sm">
+                          {i + 1}. {item}
+                        </p>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </RadioGroup>
+
+                  {/* Match options as radio buttons */}
+                  <div>
+                    <p className="font-semibold text-sm text-muted-foreground mb-2">कूट (Answer Options):</p>
+                    <RadioGroup
+                      value={currentAnswer?.selectedOption?.toString()}
+                      onValueChange={(value) =>
+                        handleAnswerChange(currentQ.id, parseInt(value, 10))
+                      }
+                    >
+                      {((currentQ.options as any).matchOptions || []).map((opt: string, index: number) => (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent cursor-pointer"
+                        >
+                          <RadioGroupItem
+                            value={index.toString()}
+                            id={`option-${index}`}
+                          />
+                          <Label
+                            htmlFor={`option-${index}`}
+                            className="flex-1 cursor-pointer"
+                          >
+                            {String.fromCharCode(65 + index)}. {opt}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                </div>
+              ) : (
+                <RadioGroup
+                  value={currentAnswer?.selectedOption?.toString()}
+                  onValueChange={(value) =>
+                    handleAnswerChange(currentQ.id, parseInt(value, 10))
+                  }
+                >
+                  {(Array.isArray(currentQ.options) ? currentQ.options : []).map((option: string, index: number) => (
+                    <div
+                      key={index}
+                      className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent cursor-pointer"
+                    >
+                      <RadioGroupItem
+                        value={index.toString()}
+                        id={`option-${index}`}
+                      />
+                      <Label
+                        htmlFor={`option-${index}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        {option}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              )}
             </Card>
 
             {isLastFreeQuestion && (

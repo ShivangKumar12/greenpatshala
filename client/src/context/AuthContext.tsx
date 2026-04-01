@@ -32,14 +32,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ✅ PRODUCTION FIX: Use separate backend URL for API calls
-const getApiUrl = () => {
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
-  return `${backendUrl}/api/auth`;
-};
-
-const API_URL = getApiUrl();
-console.log('🔗 AuthContext API_URL (backend):', API_URL);
+// ✅ PRODUCTION FIX: Use relative path for API calls
+const API_URL = '/api/auth';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

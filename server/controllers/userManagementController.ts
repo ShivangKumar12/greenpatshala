@@ -289,7 +289,7 @@ export const createUser = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to create user. Please try again later.',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };
@@ -383,11 +383,12 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const newStatus = !user.is_verified;
+    // ✅ BUG-025 FIX: Use is_active instead of is_verified for suspend/activate
+    const newStatus = !user.is_active;
 
     await db
       .update(users)
-      .set({ is_verified: newStatus })
+      .set({ is_active: newStatus })
       .where(eq(users.id, userId));
 
     console.log(`[toggleUserStatus] User ${userId} ${newStatus ? 'activated' : 'suspended'}`);

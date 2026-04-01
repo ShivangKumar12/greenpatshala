@@ -56,7 +56,7 @@ export const getSettings = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch settings',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };
@@ -183,7 +183,7 @@ export const updateSettings = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update settings',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };
@@ -244,7 +244,7 @@ export const getPublicSettings = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch settings',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };

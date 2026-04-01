@@ -1,4 +1,4 @@
-﻿// server/routes/payment.routes.ts
+// server/routes/payment.routes.ts
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import {
@@ -10,12 +10,7 @@ import {
 
 const router = Router();
 
-// Debug logs (optional – remove after confirming everything is function)
-console.log('createCourseOrder:', typeof createCourseOrder);
-console.log('createQuizOrder:', typeof createQuizOrder);
-console.log('createStudyMaterialOrder:', typeof createStudyMaterialOrder);
-console.log('verifyPayment:', typeof verifyPayment);
-console.log('authenticate:', typeof authenticate);
+
 
 // Create Razorpay order for a course (supports coupon)
 router.post('/course/:courseId/create-order', authenticate, createCourseOrder);

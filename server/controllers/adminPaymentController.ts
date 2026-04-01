@@ -86,7 +86,7 @@ export const getAllPayments = async (
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch payments',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };
@@ -131,7 +131,7 @@ export const getPaymentStats = async (
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch payment stats',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };

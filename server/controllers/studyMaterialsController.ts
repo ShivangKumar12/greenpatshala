@@ -341,7 +341,7 @@ export const createStudyMaterial = async (req: MulterRequest, res: Response) => 
     res.status(500).json({
       success: false,
       message: 'Failed to create study material',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };
@@ -447,7 +447,7 @@ export const updateStudyMaterial = async (req: MulterRequest, res: Response) => 
     res.status(500).json({
       success: false,
       message: 'Failed to update study material',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
     });
   }
 };

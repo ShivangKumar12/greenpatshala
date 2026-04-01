@@ -1,4 +1,4 @@
-﻿// server/routes/auth.routes.ts - PRODUCTION READY WITH GOOGLE OAUTH
+// server/routes/auth.routes.ts - PRODUCTION READY WITH GOOGLE OAUTH
 import { Router } from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
@@ -24,12 +24,7 @@ import {
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 
-// ✅ DEBUG: Check if environment variables are loaded
-console.log('🔍 AUTH ROUTES - Environment Check:');
-console.log('   FRONTEND_URL:', process.env.FRONTEND_URL);
-console.log('   JWT_SECRET:', process.env.JWT_SECRET ? '✅ Set' : '❌ Missing');
-console.log('   GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✅ Set' : '❌ Missing');
-console.log('   GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL);
+
 
 const router = Router();
 

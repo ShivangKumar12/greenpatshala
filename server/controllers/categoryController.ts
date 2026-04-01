@@ -39,7 +39,7 @@ export const getCategories = async (req: Request, res: Response): Promise<Respon
     });
   } catch (error: any) {
     console.error('[GET CATEGORIES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -71,7 +71,7 @@ export const getCategoryById = async (req: Request, res: Response): Promise<Resp
     return res.json({ success: true, category });
   } catch (error: any) {
     console.error('[GET CATEGORY BY ID ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -146,7 +146,7 @@ export const createCategory = async (req: Request, res: Response): Promise<Respo
     });
   } catch (error: any) {
     console.error('[CREATE CATEGORY ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -202,7 +202,7 @@ export const updateCategory = async (req: Request, res: Response): Promise<Respo
     });
   } catch (error: any) {
     console.error('[UPDATE CATEGORY ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -233,7 +233,7 @@ export const deleteCategory = async (req: Request, res: Response): Promise<Respo
     });
   } catch (error: any) {
     console.error('[DELETE CATEGORY ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });

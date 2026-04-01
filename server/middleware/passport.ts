@@ -69,7 +69,7 @@ export function setupGoogleAuth() {
                 name: profile.displayName || 'Google User',
                 google_id: profile.id,
                 avatar: profile.photos?.[0]?.value,
-                role: 'student',
+                role: 'user',  // ✅ BUG-026 FIX: Use 'user' not 'student' to match system-wide role naming
                 is_verified: true, // Auto-verify Google users
                 password: null, // No password for Google users
               })

@@ -1,9 +1,9 @@
 // client/src/lib/axios.ts - CENTRALIZED AXIOS CONFIGURATION WITH AUTH
 import axios from 'axios';
 
-// ✅ FIXED: Point to backend on port 5001
+// ✅ FIXED: Use env var or relative path for production
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5050/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',

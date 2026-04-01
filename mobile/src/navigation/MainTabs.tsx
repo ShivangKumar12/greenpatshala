@@ -1,67 +1,92 @@
-// Main Tabs Navigator with green-themed bottom tabs
+// Main Bottom Tab Navigator - 5 tabs matching web structure
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SHADOWS } from '../theme/theme';
+
+// Screens
 import HomeScreen from '../screens/home/HomeScreen';
+import TestSeriesScreen from '../screens/tests/TestSeriesScreen';
 import CoursesScreen from '../screens/courses/CoursesScreen';
-import QuizzesScreen from '../screens/quizzes/QuizzesScreen';
-import JobsScreen from '../screens/jobs/JobsScreen';
+import StudyHubScreen from '../screens/study/StudyHubScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
+const tabConfig = [
+    { name: 'HomeTab', component: HomeScreen, label: 'Home', icon: 'home' },
+    { name: 'TestsTab', component: TestSeriesScreen, label: 'Tests', icon: 'clipboard' },
+    { name: 'CoursesTab', component: CoursesScreen, label: 'Courses', icon: 'book' },
+    { name: 'StudyTab', component: StudyHubScreen, label: 'Study', icon: 'library' },
+    { name: 'ProfileTab', component: ProfileScreen, label: 'Profile', icon: 'person' },
+];
+
 export default function MainTabs() {
     return (
         <Tab.Navigator
-            screenOptions={({ route }) => ({
+            screenOptions={{
                 headerShown: false,
-                tabBarIcon: ({ focused, color, size }) => {
-                    let iconName: keyof typeof Ionicons.glyphMap = 'home';
-                    switch (route.name) {
-                        case 'HomeTab': iconName = focused ? 'home' : 'home-outline'; break;
-                        case 'CoursesTab': iconName = focused ? 'book' : 'book-outline'; break;
-                        case 'QuizzesTab': iconName = focused ? 'help-circle' : 'help-circle-outline'; break;
-                        case 'JobsTab': iconName = focused ? 'briefcase' : 'briefcase-outline'; break;
-                        case 'ProfileTab': iconName = focused ? 'person' : 'person-outline'; break;
-                    }
-                    return (
-                        <View style={focused ? styles.activeTab : undefined}>
-                            <Ionicons name={iconName} size={focused ? 26 : 24} color={color} />
-                        </View>
-                    );
-                },
                 tabBarActiveTintColor: COLORS.primary,
                 tabBarInactiveTintColor: COLORS.textLight,
-                tabBarLabelStyle: {
-                    fontSize: 11,
-                    fontWeight: '600',
-                    marginTop: -2,
-                },
-                tabBarStyle: {
-                    backgroundColor: '#FFFFFF',
-                    borderTopWidth: 0,
-                    height: 70,
-                    paddingBottom: 10,
-                    paddingTop: 8,
-                    ...SHADOWS.lg,
-                },
-            })}
+                tabBarStyle: styles.tabBar,
+                tabBarLabelStyle: styles.tabLabel,
+                tabBarItemStyle: styles.tabItem,
+            }}
         >
-            <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: 'Home' }} />
-            <Tab.Screen name="CoursesTab" component={CoursesScreen} options={{ tabBarLabel: 'Courses' }} />
-            <Tab.Screen name="QuizzesTab" component={QuizzesScreen} options={{ tabBarLabel: 'Quizzes' }} />
-            <Tab.Screen name="JobsTab" component={JobsScreen} options={{ tabBarLabel: 'Jobs' }} />
-            <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
+            {tabConfig.map(({ name, component, label, icon }) => (
+                <Tab.Screen
+                    key={name}
+                    name={name}
+                    component={component}
+                    options={{
+                        tabBarLabel: label,
+                        tabBarIcon: ({ focused, color, size }) => (
+                            <View style={styles.iconContainer}>
+                                {focused && <View style={styles.activeIndicator} />}
+                                <Ionicons
+                                    name={(focused ? icon : `${icon}-outline`) as any}
+                                    size={22}
+                                    color={color}
+                                />
+                            </View>
+                        ),
+                    }}
+                />
+            ))}
         </Tab.Navigator>
     );
 }
 
 const styles = StyleSheet.create({
-    activeTab: {
-        backgroundColor: COLORS.primaryBg,
-        borderRadius: 12,
-        padding: 6,
+    tabBar: {
+        backgroundColor: COLORS.surface,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+        height: Platform.OS === 'ios' ? 88 : 65,
+        paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+        paddingTop: 8,
+        ...SHADOWS.md,
+    },
+    tabLabel: {
+        fontSize: FONTS.sizes.xs,
+        fontWeight: FONTS.weights.medium,
+        marginTop: 2,
+    },
+    tabItem: {
+        paddingTop: 4,
+    },
+    iconContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+    },
+    activeIndicator: {
+        position: 'absolute',
+        top: -10,
+        width: 32,
+        height: 3,
+        backgroundColor: COLORS.primary,
+        borderRadius: 2,
     },
 });

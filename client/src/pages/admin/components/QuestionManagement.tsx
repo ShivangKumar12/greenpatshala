@@ -78,7 +78,7 @@ interface QuestionManagementProps {
 
 interface QuestionFormData {
   id?: number;
-  questionType: 'mcq' | 'true_false' | 'multiple_answer';
+  questionType: 'mcq' | 'true_false' | 'multiple_answer' | 'match_the_column';
   question: string;
   questionImage: string;
   options: string[];
@@ -88,6 +88,10 @@ interface QuestionFormData {
   negativeMarks: number;
   difficulty: string;
   orderIndex: number;
+  // Match the Column fields
+  columnA: string[];
+  columnB: string[];
+  matchOptions: string[];
 }
 
 const INITIAL_FORM_STATE: QuestionFormData = {
@@ -101,6 +105,9 @@ const INITIAL_FORM_STATE: QuestionFormData = {
   negativeMarks: 0,
   difficulty: 'medium',
   orderIndex: 0,
+  columnA: ['', '', '', ''],
+  columnB: ['', '', '', ''],
+  matchOptions: ['', '', '', ''],
 };
 
 // Sortable Question Item Component
@@ -146,6 +153,7 @@ function SortableQuestionItem({
       mcq: 'MCQ',
       true_false: 'True/False',
       multiple_answer: 'Multiple Answer',
+      match_the_column: 'Match the Column',
     };
     return labels[type] || type;
   };
@@ -233,7 +241,50 @@ function SortableQuestionItem({
 
           {/* Options */}
           <div className="space-y-1">
-            {question.questionType === 'true_false' ? (
+            {question.questionType === 'match_the_column' ? (
+              <div className="space-y-2">
+                {/* Column A / Column B display */}
+                {(() => {
+                  const opts = question.options as any;
+                  const colA: string[] = opts?.columnA || [];
+                  const colB: string[] = opts?.columnB || [];
+                  const matchOpts: string[] = opts?.matchOptions || [];
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 gap-4 text-sm border rounded p-2 bg-gray-50">
+                        <div>
+                          <p className="font-semibold text-xs text-gray-500 mb-1">Column A</p>
+                          {colA.map((item, i) => (
+                            <p key={i}>{String.fromCharCode(65 + i)}. {item}</p>
+                          ))}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-xs text-gray-500 mb-1">Column B</p>
+                          {colB.map((item, i) => (
+                            <p key={i}>{i + 1}. {item}</p>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1 mt-1">
+                        {matchOpts.map((opt, idx) => {
+                          const isCorrect = question.correctAnswer === idx;
+                          return (
+                            <div key={idx} className="flex items-center gap-2 text-sm">
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isCorrect ? 'border-green-500 bg-green-100' : 'border-gray-300'}`}>
+                                {isCorrect && <Check className="h-3 w-3 text-green-600" />}
+                              </div>
+                              <span className={isCorrect ? 'font-medium text-green-700' : ''}>
+                                {String.fromCharCode(65 + idx)}. {opt}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : question.questionType === 'true_false' ? (
               <div className="flex gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div
@@ -378,21 +429,28 @@ export default function QuestionManagement({
   // Open edit dialog
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion(question);
+    const opts = question.options as any;
+    const isMatch = question.questionType === 'match_the_column';
     setFormData({
       id: question.id,
-      questionType: question.questionType,
+      questionType: question.questionType as any,
       question: question.question,
       questionImage: question.questionImage || '',
       options:
         question.questionType === 'true_false'
           ? ['True', 'False']
-          : question.options,
+          : isMatch
+            ? []
+            : question.options,
       correctAnswer: question.correctAnswer,
       explanation: question.explanation || '',
       marks: question.marks,
       negativeMarks: question.negativeMarks,
       difficulty: question.difficulty,
       orderIndex: question.orderIndex,
+      columnA: isMatch ? (opts?.columnA || ['', '', '', '']) : ['', '', '', ''],
+      columnB: isMatch ? (opts?.columnB || ['', '', '', '']) : ['', '', '', ''],
+      matchOptions: isMatch ? (opts?.matchOptions || ['', '', '', '']) : ['', '', '', ''],
     });
     setIsDialogOpen(true);
   };
@@ -400,17 +458,22 @@ export default function QuestionManagement({
   // Duplicate question
   const handleDuplicateQuestion = (question: Question) => {
     setEditingQuestion(null);
+    const opts = question.options as any;
+    const isMatch = question.questionType === 'match_the_column';
     setFormData({
-      questionType: question.questionType,
+      questionType: question.questionType as any,
       question: question.question + ' (Copy)',
       questionImage: question.questionImage || '',
-      options: question.options,
+      options: isMatch ? [] : question.options,
       correctAnswer: question.correctAnswer,
       explanation: question.explanation || '',
       marks: question.marks,
       negativeMarks: question.negativeMarks,
       difficulty: question.difficulty,
       orderIndex: questions.length,
+      columnA: isMatch ? (opts?.columnA || ['', '', '', '']) : ['', '', '', ''],
+      columnB: isMatch ? (opts?.columnB || ['', '', '', '']) : ['', '', '', ''],
+      matchOptions: isMatch ? (opts?.matchOptions || ['', '', '', '']) : ['', '', '', ''],
     });
     setIsDialogOpen(true);
   };
@@ -447,7 +510,17 @@ export default function QuestionManagement({
       return;
     }
 
-    if (
+    // Match the Column validation
+    if (formData.questionType === 'match_the_column') {
+      if (formData.columnA.some((c) => !c.trim()) || formData.columnB.some((c) => !c.trim())) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'All Column A and Column B items must be filled' });
+        return;
+      }
+      if (formData.matchOptions.some((m) => !m.trim())) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'All match answer options must be filled' });
+        return;
+      }
+    } else if (
       formData.questionType !== 'true_false' &&
       formData.options.some((opt) => !opt.trim())
     ) {
@@ -462,16 +535,28 @@ export default function QuestionManagement({
     try {
       setIsSaving(true);
 
+      // Build payload — for match_the_column, package options as structured object
+      const payload = formData.questionType === 'match_the_column'
+        ? {
+            ...formData,
+            options: {
+              columnA: formData.columnA,
+              columnB: formData.columnB,
+              matchOptions: formData.matchOptions,
+            },
+          }
+        : formData;
+
       if (editingQuestion) {
         // Update existing question
-        await updateQuestion(quizId, editingQuestion.id, formData);
+        await updateQuestion(quizId, editingQuestion.id, payload as any);
         toast({
           title: 'Success',
           description: 'Question updated successfully',
         });
       } else {
         // Add new question
-        await addQuestions(quizId, [formData]);
+        await addQuestions(quizId, [payload as any]);
         toast({
           title: 'Success',
           description: 'Question added successfully',
@@ -502,15 +587,21 @@ export default function QuestionManagement({
       newFormData.options = ['True', 'False'];
       newFormData.correctAnswer = 0;
     } else if (type === 'mcq') {
-      if (formData.questionType === 'true_false') {
+      if (formData.questionType === 'true_false' || formData.questionType === 'match_the_column') {
         newFormData.options = ['', '', '', ''];
       }
       newFormData.correctAnswer = 0;
     } else if (type === 'multiple_answer') {
-      if (formData.questionType === 'true_false') {
+      if (formData.questionType === 'true_false' || formData.questionType === 'match_the_column') {
         newFormData.options = ['', '', '', ''];
       }
       newFormData.correctAnswer = [];
+    } else if (type === 'match_the_column') {
+      newFormData.options = [];
+      newFormData.columnA = ['', '', '', ''];
+      newFormData.columnB = ['', '', '', ''];
+      newFormData.matchOptions = ['', '', '', ''];
+      newFormData.correctAnswer = 0;
     }
 
     setFormData(newFormData);
@@ -714,6 +805,7 @@ export default function QuestionManagement({
                     Multiple Choice (Multiple Answers)
                   </SelectItem>
                   <SelectItem value="true_false">True/False</SelectItem>
+                  <SelectItem value="match_the_column">Match the Column (सुमेलित कीजिए)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -755,8 +847,76 @@ export default function QuestionManagement({
               )}
             </div>
 
-            {/* Options */}
-            {formData.questionType !== 'true_false' && (
+            {/* Match the Column Form */}
+            {formData.questionType === 'match_the_column' && (
+              <div className="space-y-4">
+                {/* Column A */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold">सूची-I (Column A) *</Label>
+                    <Button variant="outline" size="sm" onClick={() => setFormData({ ...formData, columnA: [...formData.columnA, ''], columnB: [...formData.columnB, ''] })}>
+                      <Plus className="h-3 w-3 mr-1" /> Add Row
+                    </Button>
+                  </div>
+                  {formData.columnA.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="font-medium text-sm w-6">{String.fromCharCode(65 + idx)}.</span>
+                      <Input placeholder={`Column A - Item ${idx + 1}`} value={item} onChange={(e) => { const a = [...formData.columnA]; a[idx] = e.target.value; setFormData({ ...formData, columnA: a }); }} className="flex-1" />
+                      {formData.columnA.length > 2 && (
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          const a = formData.columnA.filter((_, i) => i !== idx);
+                          const b = formData.columnB.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, columnA: a, columnB: b });
+                        }}><X className="h-4 w-4" /></Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Column B */}
+                <div className="space-y-2">
+                  <Label className="font-semibold">सूची-II (Column B) *</Label>
+                  {formData.columnB.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="font-medium text-sm w-6">{idx + 1}.</span>
+                      <Input placeholder={`Column B - Item ${idx + 1}`} value={item} onChange={(e) => { const b = [...formData.columnB]; b[idx] = e.target.value; setFormData({ ...formData, columnB: b }); }} className="flex-1" />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Match Answer Options (MCQ-style) */}
+                <div className="space-y-2 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold">Answer Options (कूट) *</Label>
+                    <Button variant="outline" size="sm" onClick={() => setFormData({ ...formData, matchOptions: [...formData.matchOptions, ''] })}>
+                      <Plus className="h-3 w-3 mr-1" /> Add Option
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">Enter answer combinations like "A-2, B-1, C-4, D-3" and select the correct one.</p>
+                  {formData.matchOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <RadioGroup value={formData.correctAnswer.toString()} onValueChange={(v) => setFormData({ ...formData, correctAnswer: parseInt(v) })}>
+                        <RadioGroupItem value={idx.toString()} />
+                      </RadioGroup>
+                      <span className="font-medium text-sm w-6">{String.fromCharCode(65 + idx)}.</span>
+                      <Input placeholder={`e.g., A-${idx + 1}, B-${idx + 2 > formData.columnA.length ? 1 : idx + 2}, C-...`} value={opt} onChange={(e) => { const m = [...formData.matchOptions]; m[idx] = e.target.value; setFormData({ ...formData, matchOptions: m }); }} className="flex-1" />
+                      {formData.matchOptions.length > 2 && (
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          const m = formData.matchOptions.filter((_, i) => i !== idx);
+                          let ca = formData.correctAnswer as number;
+                          if (ca === idx) ca = 0;
+                          else if (ca > idx) ca--;
+                          setFormData({ ...formData, matchOptions: m, correctAnswer: ca });
+                        }}><X className="h-4 w-4" /></Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Options (MCQ / Multiple Answer) */}
+            {formData.questionType !== 'true_false' && formData.questionType !== 'match_the_column' && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Options *</Label>

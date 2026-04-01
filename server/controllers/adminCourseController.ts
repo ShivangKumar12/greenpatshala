@@ -275,22 +275,21 @@ export const adminUpdateCourse = async (req: RequestWithUser, res: Response) => 
       });
     }
 
-    const id = Number((req as any).params?.id);
+    // ✅ Boolean flags
     if (body.isFree !== undefined) updateData.isFree = Boolean(body.isFree);
-      return (res as any).status(400).json({ success: false, message: 'Invalid course ID' });
     if (body.isFeatured !== undefined) updateData.isFeatured = Boolean(body.isFeatured);
+    if (body.isPublished !== undefined) updateData.isPublished = Boolean(body.isPublished);
 
     // ✅ Counts
     if (body.totalLessons !== undefined) updateData.totalLessons = parseInt(String(body.totalLessons)) || 0;
-      return (res as any).status(404).json({ success: false, message: 'Course not found' });
     if (body.totalStudents !== undefined) updateData.totalStudents = parseInt(String(body.totalStudents)) || 0;
     if (body.rating !== undefined) updateData.rating = parseFloat(String(body.rating)) || 0;
 
     // ✅ Arrays
-      return (res as any).status(403).json({ 
-        success: false, 
-        message: 'Admin or instructor access required' 
-      });
+    if (body.syllabus !== undefined) updateData.syllabus = Array.isArray(body.syllabus) ? body.syllabus : [];
+    if (body.features !== undefined) updateData.features = Array.isArray(body.features) ? body.features : [];
+    if (body.requirements !== undefined) updateData.requirements = Array.isArray(body.requirements) ? body.requirements : [];
+
     await db.update(courses).set(updateData).where(eq(courses.id, id));
     const updatedCourse = await db.select().from(courses).where(eq(courses.id, id)).limit(1);
 
@@ -310,9 +309,7 @@ export const adminUpdateCourse = async (req: RequestWithUser, res: Response) => 
  * PATCH /api/admin/courses/:id/quick-update
  */
 export const quickUpdateCourse = async (req: RequestWithUser, res: Response) => {
-      updateData.thumbnail = `/uploads/courses/thumbnails/${(req as any).file.filename}`;
-    const id = Number(req.params.id);
-    try {
+  try {
       const id = Number((req as any).params?.id);
       if (Number.isNaN(id)) {
         return (res as any).status(400).json({ success: false, message: 'Invalid course ID' });
@@ -364,9 +361,8 @@ export const quickUpdateCourse = async (req: RequestWithUser, res: Response) => 
       console.error('[QUICK UPDATE ERROR]', error);
       return (res as any).status(500).json({ success: false, message: error.message });
     }
-/**
- * PATCH /api/admin/courses/:id/pricing
- */
+};
+
 export const updateCoursePricing = async (req: RequestWithUser, res: Response) => {
   try {
     const id = Number((req as any).params?.id);

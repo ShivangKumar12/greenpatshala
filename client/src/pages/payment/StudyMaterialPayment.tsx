@@ -51,6 +51,7 @@ export default function StudyMaterialPayment() {
       navigate('/login');
       return;
     }
+    if (loading) return;
 
     if (!studyMaterialId || Number.isNaN(studyMaterialId)) {
       setError('Invalid material ID');
@@ -76,11 +77,7 @@ export default function StudyMaterialPayment() {
       setLoading(true);
       setError(null);
 
-      console.log('[Payment] Creating order for material:', studyMaterialId);
-
       const order = await createStudyMaterialOrder(studyMaterialId);
-
-      console.log('[Payment] Order created:', order);
 
       setMaterialTitle(order.studyMaterial?.title || null);
       setAmount(order.amount);
@@ -99,8 +96,6 @@ export default function StudyMaterialPayment() {
         theme: { color: '#3b82f6' },
         handler: async (response: any) => {
           try {
-            console.log('[Payment] Payment successful, verifying...');
-            
             await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -112,14 +107,10 @@ export default function StudyMaterialPayment() {
               description: 'You now have access to this material.',
             });
 
-            console.log('[Payment] Redirecting to materials page...');
-
-            // Redirect with timestamp to trigger refetch
             setTimeout(() => {
               navigate('/materials?t=' + Date.now());
             }, 1500);
           } catch (err: any) {
-            console.error('[Payment] Verification error:', err);
             setError(err?.response?.data?.message || 'Verification failed');
             toast({
               title: 'Verification failed',
@@ -135,7 +126,6 @@ export default function StudyMaterialPayment() {
         modal: {
           ondismiss: () => {
             setLoading(false);
-            console.log('[Payment] Payment cancelled by user');
             toast({
               title: 'Payment cancelled',
               description: 'You can try again anytime.',
@@ -144,11 +134,19 @@ export default function StudyMaterialPayment() {
         },
       };
 
-      console.log('[Payment] Opening Razorpay checkout...');
       const rzp = new window.Razorpay(options);
+
+      rzp.on('payment.failed', function (resp: any) {
+        toast({
+          title: 'Payment Failed',
+          description: resp.error?.description || 'Payment was not completed.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+      });
+
       rzp.open();
     } catch (error: any) {
-      console.error('[Payment] Error:', error);
       setLoading(false);
       
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to initialize payment';

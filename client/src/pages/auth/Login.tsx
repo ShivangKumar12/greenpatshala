@@ -82,9 +82,7 @@ export default function Login() {
 
     // ✅ GOOGLE OAUTH LOGIN
     const handleGoogleLogin = () => {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5050';
-        console.log('🔐 Redirecting to Google OAuth:', `${API_URL}/auth/google`);
-        window.location.href = `${API_URL}/auth/google`;
+        window.location.href = '/api/auth/google';
     };
 
     return (

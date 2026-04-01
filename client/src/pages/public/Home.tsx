@@ -50,7 +50,7 @@ const StatsSection = ({ stats, t }: { stats: any[]; t: (key: string) => string }
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.3 });
 
   return (
-    <section className="py-16 bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-primary-foreground">
+    <section className="py-16 bg-gradient-to-br from-brand-700 via-brand-700/95 to-brand-700/90 text-brand-50">
       <div ref={ref} className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {stats.map((stat: any, index: number) => (
@@ -88,9 +88,7 @@ const AutoScrollCarousel = ({ children, speed = 20, bgClass = 'from-white dark:f
 
   return (
     <div className="relative">
-      {/* Gradient fade masks on edges */}
-      <div className={`absolute left-0 top-0 bottom-0 w-16 md:w-24 bg-gradient-to-r ${bgClass} to-transparent z-10 pointer-events-none`} />
-      <div className={`absolute right-0 top-0 bottom-0 w-16 md:w-24 bg-gradient-to-l ${bgClass} to-transparent z-10 pointer-events-none`} />
+      {/* Gradient fade masks on edges removed for better visibility on mobile and desktop */}
 
       <div className="overflow-hidden px-4">
         <div
@@ -136,9 +134,7 @@ const VerticalAutoScroll = ({ children, speed = 25, bgClass = 'from-muted/50 dar
 
   return (
     <div className={`relative ${heightClass} overflow-hidden rounded-xl`}>
-      {/* Top and Bottom Fade Masks */}
-      <div className={`absolute top-0 left-0 right-0 h-16 bg-gradient-to-b ${bgClass} to-transparent z-10 pointer-events-none`} />
-      <div className={`absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t ${bgClass} to-transparent z-10 pointer-events-none`} />
+      {/* Top and Bottom Fade Masks removed for better visibility */}
 
       <div
         className="flex flex-col gap-4 pt-4"
@@ -235,25 +231,25 @@ export default function Home() {
       icon: Target,
       titleKey: 'features.focusedLearning',
       descKey: 'features.focusedLearningDesc',
-      color: 'bg-emerald-500/10 text-emerald-600',
+      color: 'bg-brand-500/10 text-brand-600',
     },
     {
       icon: Users,
       titleKey: 'features.expertMentorship',
       descKey: 'features.expertMentorshipDesc',
-      color: 'bg-teal-500/10 text-teal-600',
+      color: 'bg-brand-500/10 text-brand-600',
     },
     {
       icon: FileQuestion,
       titleKey: 'features.practiceTests',
       descKey: 'features.practiceTestsDesc',
-      color: 'bg-green-600/10 text-green-700',
+      color: 'bg-brand-600/10 text-brand-700',
     },
     {
       icon: TrendingUp,
       titleKey: 'features.trackProgress',
       descKey: 'features.trackProgressDesc',
-      color: 'bg-lime-500/10 text-lime-600',
+      color: 'bg-brand-500/10 text-brand-600',
     },
   ], []);
 
@@ -468,19 +464,19 @@ export default function Home() {
             className="w-full h-full object-cover"
             loading="eager"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-black/75 to-emerald-900/50" />
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-950/90 via-black/75 to-brand-900/50" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-24 md:py-32 lg:py-40">
           <div className="max-w-3xl">
-            <Badge className="mb-6 bg-emerald-500/20 text-emerald-100 border-emerald-400/30 backdrop-blur-sm animate-fadeInUp">
+            <Badge className="mb-6 bg-brand-500/20 text-brand-100 border-brand-400/30 backdrop-blur-sm animate-fadeInUp">
               <Sparkles className="w-3 h-3 mr-1" />
               India's Most Trusted Government Exam Platform
             </Badge>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-6 leading-tight animate-fadeInUp delay-100">
               {t('home.heroTitle')}
-              <span style={{ color: '#76ff03' }}> {t('home.heroTitleHighlight')}</span>
+              <span className="text-brand-400"> {t('home.heroTitleHighlight')}</span>
               <br />
               {t('home.heroSubtitle')}
             </h1>
@@ -491,7 +487,7 @@ export default function Home() {
 
             <div className="flex flex-wrap gap-4 mb-10 animate-fadeInUp delay-300">
               <Link href="/courses">
-                <Button size="lg" className="gap-2 text-base px-8 py-6 animate-pulseGlow">
+                <Button size="lg" className="gap-2 text-base px-8 py-6 animate-pulseGlow bg-brand-700 hover:bg-brand-800 text-brand-50 border-0">
                   {t('home.startLearning')}
                   <ArrowRight className="w-5 h-5" />
                 </Button>
@@ -510,15 +506,15 @@ export default function Home() {
 
             <div className="flex flex-wrap items-center gap-6 text-white/90 animate-fadeInUp delay-400">
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <CheckCircle className="w-5 h-5 text-brand-400" />
                 <span className="text-sm font-medium">{t('home.trustIndicator1')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <CheckCircle className="w-5 h-5 text-brand-400" />
                 <span className="text-sm font-medium">{t('home.trustIndicator2')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <CheckCircle className="w-5 h-5 text-brand-400" />
                 <span className="text-sm font-medium">{t('home.trustIndicator3')}</span>
               </div>
             </div>
@@ -545,7 +541,7 @@ export default function Home() {
             className="flex flex-wrap justify-center gap-3"
           >
             {examCategories.map((exam, index) => (
-              <Badge key={index} variant="secondary" className="text-sm px-4 py-2 hover:bg-primary/10 hover:text-primary transition-colors cursor-default">
+              <Badge key={index} variant="secondary" className="text-sm px-4 py-2 hover:bg-brand-700/10 hover:text-brand-700 transition-colors cursor-default">
                 {exam}
               </Badge>
             ))}
@@ -575,7 +571,7 @@ export default function Home() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
           >
             {features.map((feature, index) => (
-              <Card key={index} className="premium-card text-center border-2 hover:border-primary/50 transition-all">
+              <Card key={index} className="premium-card text-center border-2 hover:border-brand-700/50 transition-all">
                 <CardContent className="p-8">
                   <div className={`w-16 h-16 rounded-2xl ${feature.color} flex items-center justify-center mx-auto mb-6`}>
                     <feature.icon className="w-8 h-8" />
@@ -700,7 +696,7 @@ export default function Home() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 md:py-28 bg-gradient-to-br from-primary/5 to-primary/10">
+      <section className="py-20 md:py-28 bg-gradient-to-br from-brand-700/5 to-brand-700/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <AnimatedSection animation="fadeInUp" className="text-center mb-16">
             <Badge variant="outline" className="mb-4">
@@ -720,8 +716,8 @@ export default function Home() {
             {benefits.map((benefit, index) => (
               <Card key={index} className="premium-card text-center">
                 <CardContent className="p-6">
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <benefit.icon className="w-7 h-7 text-primary" />
+                  <div className="w-14 h-14 rounded-full bg-brand-700/10 flex items-center justify-center mx-auto mb-4">
+                    <benefit.icon className="w-7 h-7 text-brand-700" />
                   </div>
                   <h3 className="font-semibold text-lg mb-2">{benefit.title}</h3>
                   <p className="text-sm text-muted-foreground">{benefit.description}</p>
@@ -750,7 +746,7 @@ export default function Home() {
 
           {loadingTestimonials ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+              <Loader2 className="w-10 h-10 animate-spin text-brand-700" />
             </div>
           ) : testimonials.length === 0 ? (
             <Card>
@@ -777,7 +773,7 @@ export default function Home() {
                       &quot;{testimonial.content}&quot;
                     </p>
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-brand-700 flex items-center justify-center text-brand-50 font-semibold text-lg">
                         {testimonial.avatar}
                       </div>
                       <div>
@@ -869,7 +865,7 @@ export default function Home() {
                       </p>
                     </div>
 
-                    <Button type="submit" size="lg" className="w-full" disabled={submittingFeedback}>
+                    <Button type="submit" size="lg" className="w-full bg-brand-700 hover:bg-brand-800 text-brand-50" disabled={submittingFeedback}>
                       {submittingFeedback ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -892,7 +888,7 @@ export default function Home() {
               <h3 className="text-2xl font-bold mb-6">{t('feedback.whatOthersSay')}</h3>
               {loadingFeedbacks ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <Loader2 className="w-8 h-8 animate-spin text-brand-700" />
                 </div>
               ) : publicFeedbacks.length === 0 ? (
                 <Card>
@@ -939,7 +935,7 @@ export default function Home() {
       {/* CTA Section */}
       <section className="py-20 md:py-28">
         <AnimatedSection animation="slideUp" className="max-w-5xl mx-auto px-4 sm:px-6">
-          <Card className="bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-primary-foreground border-0 shadow-2xl">
+          <Card className="bg-gradient-to-br from-brand-700 via-brand-700/95 to-brand-700/90 text-brand-50 border-0 shadow-2xl">
             <CardContent className="p-12 md:p-16 text-center">
               <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-6 animate-float">
                 <GraduationCap className="w-10 h-10" />

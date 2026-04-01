@@ -48,7 +48,7 @@ export interface Quiz {
 export interface Question {
   id: number;
   quizId: number;
-  questionType: 'mcq' | 'true_false' | 'multiple_answer';
+  questionType: 'mcq' | 'true_false' | 'multiple_answer' | 'match_the_column';
   question: string;
   questionImage: string | null;
   options: string[];

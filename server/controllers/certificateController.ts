@@ -302,7 +302,7 @@ export async function getTemplates(req: Request, res: Response): Promise<Respons
         return res.json({ success: true, templates });
     } catch (error: any) {
         console.error('[GET TEMPLATES ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to fetch templates', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to fetch templates', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -338,7 +338,7 @@ export async function createTemplate(req: Request, res: Response): Promise<Respo
         });
     } catch (error: any) {
         console.error('[CREATE TEMPLATE ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to create template', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to create template', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -371,7 +371,7 @@ export async function updateTemplate(req: Request, res: Response): Promise<Respo
         return res.json({ success: true, message: 'Template updated successfully' });
     } catch (error: any) {
         console.error('[UPDATE TEMPLATE ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to update template', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to update template', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -392,7 +392,7 @@ export async function deleteTemplate(req: Request, res: Response): Promise<Respo
         return res.json({ success: true, message: 'Template deleted successfully' });
     } catch (error: any) {
         console.error('[DELETE TEMPLATE ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to delete template', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to delete template', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -421,7 +421,7 @@ export async function setDefaultTemplate(req: Request, res: Response): Promise<R
         return res.json({ success: true, message: 'Template set as default' });
     } catch (error: any) {
         console.error('[SET DEFAULT TEMPLATE ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to set default template', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to set default template', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -448,7 +448,7 @@ export async function getAllCertificates(req: Request, res: Response): Promise<R
         return res.json({ success: true, count: allCerts.length, certificates: allCerts });
     } catch (error: any) {
         console.error('[GET ALL CERTIFICATES ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to fetch certificates', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to fetch certificates', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -468,7 +468,7 @@ export async function getUserCertificates(req: Request, res: Response): Promise<
         return res.json({ success: true, count: userCerts.length, certificates: userCerts });
     } catch (error: any) {
         console.error('[GET USER CERTIFICATES ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to fetch certificates', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to fetch certificates', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -499,7 +499,7 @@ export async function getCertificateById(req: Request, res: Response): Promise<R
         return res.json({ success: true, certificate: cert });
     } catch (error: any) {
         console.error('[GET CERTIFICATE ERROR]', error);
-        return res.status(500).json({ success: false, message: 'Failed to fetch certificate', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to fetch certificate', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }
 
@@ -561,6 +561,6 @@ export async function downloadCertificate(req: Request, res: Response): Promise<
         fs.createReadStream(filePath).pipe(res);
     } catch (error: any) {
         console.error('[DOWNLOAD CERTIFICATE ERROR]', error);
-        res.status(500).json({ success: false, message: 'Failed to download certificate', error: error.message });
+        res.status(500).json({ success: false, message: 'Failed to download certificate', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
     }
 }

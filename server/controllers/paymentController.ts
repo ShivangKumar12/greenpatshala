@@ -13,7 +13,7 @@ import {
   studyMaterials,
   studyMaterialPurchases,
 } from "../../shared/schema";
-import { and, eq, gt, lte } from "drizzle-orm";
+import { and, eq, gt, lte, sql } from "drizzle-orm";
 
 /**
  * Helper: apply coupon on a base amount.
@@ -52,21 +52,6 @@ async function applyCoupon(
   // Per-user coupon usage enforcement
   if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
     throw new Error("Coupon usage limit reached");
-  }
-  if (coupon.perUserLimit) {
-    const userId = (arguments[2] && typeof arguments[2] === 'number') ? arguments[2] : undefined;
-    if (userId) {
-      const [userUsage] = await db
-        .select({ count: sql`COUNT(*)` })
-        .from(sql.raw('coupon_usage'))
-        .where(and(
-          sql.raw('coupon_id = ?', [coupon.id]),
-          sql.raw('user_id = ?', [userId])
-        ));
-      if (userUsage && userUsage.count >= coupon.perUserLimit) {
-        throw new Error("You have already used this coupon");
-      }
-    }
   }
 
   if (coupon.minAmount && baseAmount < Number(coupon.minAmount)) {
@@ -209,7 +194,7 @@ export const createCourseOrder = async (
     });
   } catch (error: any) {
     console.error("[CREATE COURSE ORDER ERROR]", {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -333,7 +318,7 @@ export const createQuizOrder = async (
     });
   } catch (error: any) {
     console.error("[CREATE QUIZ ORDER ERROR]", {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -476,7 +461,7 @@ export const createStudyMaterialOrder = async (
     });
   } catch (error: any) {
     console.error("[CREATE STUDY MATERIAL ORDER ERROR]", {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -622,31 +607,54 @@ export const verifyPayment = async (
           .where(
             and(
               eq(studyMaterialPurchases.userId, userId),
-            eq(
-              studyMaterialPurchases.studyMaterialId,
-              paymentRecord.studyMaterialId
+              eq(
+                studyMaterialPurchases.studyMaterialId,
+                paymentRecord.studyMaterialId
+              )
             )
           )
-        )
-        .limit(1);
+          .limit(1);
 
-      if (!existingPurchase[0]) {
-        await db.insert(studyMaterialPurchases).values({
-          userId,
-          studyMaterialId: paymentRecord.studyMaterialId,
-          paymentId: paymentRecord.id,
-          purchasePrice: paymentRecord.amount,
-        });
+        if (!existingPurchase) {
+          await tx.insert(studyMaterialPurchases).values({
+            userId,
+            studyMaterialId: paymentRecord.studyMaterialId,
+            paymentId: paymentRecord.id,
+            purchasePrice: paymentRecord.amount,
+          });
+        }
       }
-    }
 
-    return res.json({
-      success: true,
-      message: "Payment verified and access granted.",
+      // ✅ BUG-031 FIX: Increment totalStudents on courses after enrollment
+      if (paymentRecord.courseId) {
+        await tx
+          .update(courses)
+          .set({ totalStudents: sql`${courses.totalStudents} + 1` })
+          .where(eq(courses.id, paymentRecord.courseId));
+      }
+
+      // ✅ BUG-033 FIX: Increment coupon usedCount after successful payment
+      if (paymentRecord.metadata) {
+        try {
+          const meta = typeof paymentRecord.metadata === 'string' 
+            ? JSON.parse(paymentRecord.metadata) 
+            : paymentRecord.metadata;
+          if (meta.couponId) {
+            await tx
+              .update(coupons)
+              .set({ usedCount: sql`${coupons.usedCount} + 1` })
+              .where(eq(coupons.id, meta.couponId));
+          }
+        } catch { /* ignore metadata parse errors */ }
+      }
+
+      return { success: true, message: "Payment verified and access granted." };
     });
+
+    return res.json(result);
   } catch (error: any) {
     console.error("[VERIFY PAYMENT ERROR]", {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });

@@ -28,7 +28,7 @@ interface QuestionData {
   questionType: string;
   question: string;
   questionImage?: string | null;
-  options: string[];
+  options: string[] | { columnA: string[]; columnB: string[]; matchOptions: string[] };
   correctAnswer: number | number[];
   explanation?: string | null;
   marks: number;
@@ -90,10 +90,38 @@ const COLORS = {
 
 
 const FONTS = {
-  bold: 'Helvetica-Bold',
-  regular: 'Helvetica',
-  italic: 'Helvetica-Oblique',
+  bold: 'NotoSans-Bold',
+  regular: 'NotoSans-Regular',
+  italic: 'NotoSans-Regular', // Devanagari has no italic variant; reuse regular
 };
+
+// Font file paths — try multiple locations for dev vs Docker production
+function getFontPath(filename: string): string {
+  const candidates = [
+    path.join(process.cwd(), 'server', 'fonts', filename),  // dev
+    path.join(process.cwd(), 'fonts', filename),             // Docker production
+    path.join(__dirname, '..', 'fonts', filename),           // relative to compiled file
+    path.join(__dirname, '..', '..', 'server', 'fonts', filename),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return candidates[0]; // fallback
+}
+
+/**
+ * Register Hindi-compatible fonts on a PDFDocument instance
+ */
+function registerFonts(doc: typeof PDFDocument) {
+  const regularPath = getFontPath('NotoSansDevanagari-Regular.ttf');
+  const boldPath = getFontPath('NotoSansDevanagari-Bold.ttf');
+  if (fs.existsSync(regularPath)) {
+    doc.registerFont('NotoSans-Regular', regularPath);
+  }
+  if (fs.existsSync(boldPath)) {
+    doc.registerFont('NotoSans-Bold', boldPath);
+  }
+}
 
 
 // ============================================
@@ -273,21 +301,31 @@ function formatDate(dateString: string): string {
  */
 function getCorrectAnswerText(
   correctAnswer: number | number[],
-  options: string[],
+  options: string[] | { columnA: string[]; columnB: string[]; matchOptions: string[] },
   questionType: string
 ): string {
+  if (questionType === 'match_the_column') {
+    const opts = options as { matchOptions: string[] };
+    if (typeof correctAnswer === 'number' && opts.matchOptions && opts.matchOptions[correctAnswer]) {
+      return `${String.fromCharCode(65 + correctAnswer)}) ${opts.matchOptions[correctAnswer]}`;
+    }
+    return 'N/A';
+  }
+
+  const optArr = options as string[];
+
   if (questionType === 'true_false') {
-    return typeof correctAnswer === 'number' ? options[correctAnswer] : 'N/A';
+    return typeof correctAnswer === 'number' ? optArr[correctAnswer] : 'N/A';
   }
 
   if (questionType === 'multiple_answer' && Array.isArray(correctAnswer)) {
     return correctAnswer
-      .map((idx) => `${String.fromCharCode(65 + idx)}) ${options[idx]}`)
+      .map((idx) => `${String.fromCharCode(65 + idx)}) ${optArr[idx]}`)
       .join(', ');
   }
 
   if (typeof correctAnswer === 'number') {
-    return `${String.fromCharCode(65 + correctAnswer)}) ${options[correctAnswer]}`;
+    return `${String.fromCharCode(65 + correctAnswer)}) ${optArr[correctAnswer]}`;
   }
 
   return 'N/A';
@@ -309,6 +347,7 @@ export async function exportQuizResultsToPDF(
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 40, size: 'A4' });
+      registerFonts(doc);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
@@ -611,6 +650,7 @@ export async function exportStudentResultToPDF(
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 40, size: 'A4' });
+      registerFonts(doc);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
@@ -855,6 +895,60 @@ export async function exportStudentResultToPDF(
 // ============================================
 
 
+/**
+ * Measure the height a question block will need (without drawing)
+ */
+function measureQuestionHeight(
+  doc: typeof PDFDocument,
+  question: QuestionData,
+  colWidth: number,
+  index: number
+): number {
+  const contentWidth = colWidth - 16; // padding
+  let h = 0;
+
+  // Header bar
+  h += 16;
+
+  // Question text
+  const qHeight = doc.heightOfString(question.question, { width: contentWidth - 6, fontSize: 7.5 });
+  h += qHeight + 6;
+
+  // Options
+  if (question.questionType === 'match_the_column') {
+    const opts = question.options as { columnA: string[]; columnB: string[]; matchOptions: string[] };
+    const colA = opts?.columnA || [];
+    const colB = opts?.columnB || [];
+    const matchOpts = opts?.matchOptions || [];
+    // column headers + items
+    h += 12; // header row
+    h += Math.max(colA.length, colB.length) * 10 + 4;
+    // match options
+    h += 10; // "Answer Options:" label
+    matchOpts.forEach((opt) => {
+      h += doc.heightOfString(`${String.fromCharCode(65)}. ${opt}`, { width: contentWidth - 10, fontSize: 6.5 }) + 3;
+    });
+  } else if (Array.isArray(question.options)) {
+    question.options.forEach((opt) => {
+      h += doc.heightOfString(`A) ${opt}`, { width: contentWidth - 10, fontSize: 6.5 }) + 3;
+    });
+  }
+
+  // Correct answer line
+  h += 14;
+
+  // Explanation
+  if (question.explanation) {
+    h += doc.heightOfString(question.explanation, { width: contentWidth - 10, fontSize: 6 }) + 6;
+  }
+
+  // Bottom padding
+  h += 4;
+
+  return h;
+}
+
+
 export async function exportQuizQuestionsToPDF(
   res: Response,
   quiz: QuizData,
@@ -863,7 +957,8 @@ export async function exportQuizQuestionsToPDF(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 40, size: 'A4' });
+      const doc = new PDFDocument({ margin: 30, size: 'A4' });
+      registerFonts(doc);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
@@ -876,152 +971,269 @@ export async function exportQuizQuestionsToPDF(
       addWatermark(doc, logoPath);
       let currentY = addExactHeader(doc);
 
-      currentY += 8;
+      currentY += 6;
 
-      doc.rect(32, currentY, 3, 15).fill(COLORS.primary);
+      doc.rect(32, currentY, 3, 14).fill(COLORS.primary);
       doc
-        .fontSize(11)
+        .fontSize(10)
         .font(FONTS.bold)
         .fillColor(COLORS.dark)
-        .text('Quiz Questions', 40, currentY + 2);
+        .text('Quiz Questions', 40, currentY + 1);
 
-      currentY += 22;
+      currentY += 20;
 
-      // Quiz Info
+      // Quiz Info Box
       doc
-        .rect(32, currentY, 531, 60)
+        .rect(32, currentY, 531, 55)
         .fillAndStroke(COLORS.bgPurpleLight, '#C4B5FD');
 
-      currentY += 10;
+      currentY += 8;
 
       doc.circle(40, currentY + 3, 2.5).fill(COLORS.primary);
       doc
-        .fontSize(7.5)
+        .fontSize(7)
         .font(FONTS.bold)
         .fillColor(COLORS.primary)
         .text('QUIZ INFORMATION', 47, currentY);
 
-      currentY += 14;
+      currentY += 12;
 
       const infoData = [
         ['Category: ' + quiz.category, 'Difficulty: ' + quiz.difficulty.toUpperCase()],
         ['Duration: ' + quiz.duration + ' min', 'Total Marks: ' + quiz.total_marks.toString()],
-        [
-          'Passing Marks: ' + quiz.passing_marks.toString(),
-          'Questions: ' + questions.length.toString(),
-        ],
+        ['Passing Marks: ' + quiz.passing_marks.toString(), 'Questions: ' + questions.length.toString()],
       ];
 
       infoData.forEach(([label1, label2]) => {
         doc
-          .fontSize(7)
+          .fontSize(6.5)
           .font(FONTS.regular)
           .fillColor(COLORS.dark)
           .text(label1, 50, currentY)
           .text(label2, 310, currentY);
-
-        currentY += 10;
+        currentY += 9;
       });
 
       currentY += 10;
 
-      // Questions
-      questions.forEach((question, index) => {
-        if (currentY > 700) {
-          addExactFooter(doc, doc.bufferedPageRange().count);
-          doc.addPage();
-          addWatermark(doc, logoPath);
-          currentY = 50;
-        }
+      // ── 2-Column Question Layout ──
+      const PAGE_LEFT = 32;
+      const COL_GAP = 8;
+      const TOTAL_WIDTH = 531;
+      const COL_WIDTH = (TOTAL_WIDTH - COL_GAP) / 2; // ~261.5
+      const PAGE_BOTTOM = 740;
+
+      let colX = PAGE_LEFT;
+      let colY = currentY;
+      let rightColY = currentY; // track right column Y independently
+      let isLeftCol = true;
+
+      /**
+       * Draw a single question block at (x, y) within colWidth
+       */
+      function drawQuestion(
+        x: number,
+        y: number,
+        question: QuestionData,
+        qNum: number
+      ): number {
+        const cw = COL_WIDTH;
+        const innerW = cw - 16;
+        let cy = y;
 
         const typeText =
           question.questionType === 'mcq'
             ? 'MCQ'
             : question.questionType === 'true_false'
-            ? 'T/F'
-            : 'Multi';
+              ? 'T/F'
+              : question.questionType === 'multiple_answer'
+                ? 'Multi'
+                : 'Match';
 
+        // ── Question header bar ──
         doc
-          .rect(32, currentY, 531, 14)
+          .rect(x, cy, cw, 14)
           .fillAndStroke(COLORS.bgPurpleLight, '#C4B5FD');
 
         doc
-          .fontSize(8)
+          .fontSize(7)
           .font(FONTS.bold)
           .fillColor(COLORS.primary)
-          .text(`Q${index + 1}`, 42, currentY + 2);
+          .text(`Q${qNum}`, x + 6, cy + 3);
 
         doc
-          .fontSize(6)
+          .fontSize(5.5)
+          .font(FONTS.regular)
           .fillColor(COLORS.slate)
-          .text(`[${typeText}] [${question.marks} mark(s)]`, 515, currentY + 2, {
+          .text(`[${typeText}] [${question.marks} mark(s)]`, x + cw - 80, cy + 4, {
+            width: 74,
             align: 'right',
           });
 
-        currentY += 16;
+        cy += 14;
 
+        // ── Question text ──
         doc
-          .fontSize(8)
-          .font(FONTS.regular)
+          .fontSize(7.5)
+          .font(FONTS.bold)
           .fillColor(COLORS.dark)
-          .text(question.question, 42, currentY, { width: 510 });
+          .text(question.question, x + 6, cy + 3, { width: innerW });
 
-        currentY = doc.y + 5;
+        cy = doc.y + 4;
 
-        if (question.options && question.options.length > 0) {
+        // ── Options ──
+        if (question.questionType === 'match_the_column') {
+          const opts = question.options as { columnA: string[]; columnB: string[]; matchOptions: string[] };
+          const colA = opts?.columnA || [];
+          const colB = opts?.columnB || [];
+          const matchOpts = opts?.matchOptions || [];
+          const halfW = (innerW - 8) / 2;
+
+          // Column headers
+          doc.fontSize(6).font(FONTS.bold).fillColor(COLORS.primary);
+          doc.text('सूची-I', x + 8, cy, { width: halfW });
+          doc.text('सूची-II', x + 8 + halfW + 8, cy, { width: halfW });
+          cy += 10;
+
+          // Column items
+          const maxLen = Math.max(colA.length, colB.length);
+          for (let i = 0; i < maxLen; i++) {
+            doc.fontSize(6).font(FONTS.regular).fillColor(COLORS.dark);
+            if (colA[i]) doc.text(`${String.fromCharCode(65 + i)}. ${colA[i]}`, x + 8, cy, { width: halfW });
+            if (colB[i]) doc.text(`${i + 1}. ${colB[i]}`, x + 8 + halfW + 8, cy, { width: halfW });
+            cy += 9;
+          }
+          cy += 2;
+
+          // Match options
+          doc.fontSize(6).font(FONTS.bold).fillColor(COLORS.slate).text('कूट:', x + 8, cy);
+          cy += 8;
+
+          matchOpts.forEach((opt, optIdx) => {
+            const isCorrect = question.correctAnswer === optIdx;
+
+            if (isCorrect) {
+              // Green highlight background
+              const optH = doc.heightOfString(`${String.fromCharCode(65 + optIdx)}. ${opt}`, { width: innerW - 14, fontSize: 6.5 }) + 4;
+              doc.rect(x + 6, cy - 1, innerW + 4, optH).fill('#D1FAE5');
+            }
+
+            doc
+              .fontSize(6.5)
+              .font(isCorrect ? FONTS.bold : FONTS.regular)
+              .fillColor(isCorrect ? '#047857' : COLORS.dark)
+              .text(`${String.fromCharCode(65 + optIdx)}. ${opt}`, x + 10, cy, { width: innerW - 14 });
+
+            cy = doc.y + 3;
+          });
+        } else if (Array.isArray(question.options)) {
           question.options.forEach((option, optIndex) => {
             const isCorrect = Array.isArray(question.correctAnswer)
               ? question.correctAnswer.includes(optIndex)
               : question.correctAnswer === optIndex;
 
-            doc
-              .fontSize(7)
-              .font(isCorrect ? FONTS.bold : FONTS.regular)
-              .fillColor(isCorrect ? COLORS.success : COLORS.dark)
-              .text(`${String.fromCharCode(65 + optIndex)}) ${option}`, 52, currentY, {
-                width: 500,
-              });
+            if (isCorrect) {
+              // Green highlight background for correct answer
+              const optH = doc.heightOfString(`${String.fromCharCode(65 + optIndex)}) ${option}`, { width: innerW - 14, fontSize: 6.5 }) + 4;
+              doc.rect(x + 6, cy - 1, innerW + 4, optH).fill('#D1FAE5');
+            }
 
-            currentY = doc.y + 3;
+            doc
+              .fontSize(6.5)
+              .font(isCorrect ? FONTS.bold : FONTS.regular)
+              .fillColor(isCorrect ? '#047857' : COLORS.dark)
+              .text(
+                `${String.fromCharCode(65 + optIndex)}) ${option}`,
+                x + 10,
+                cy,
+                { width: innerW - 14 }
+              );
+
+            cy = doc.y + 3;
           });
         }
 
-        currentY += 4;
+        // ── Correct Answer summary ──
+        cy += 2;
+        const correctText = getCorrectAnswerText(
+          question.correctAnswer,
+          question.options,
+          question.questionType
+        );
 
         doc
-          .fontSize(7)
+          .fontSize(6)
           .font(FONTS.bold)
-          .fillColor(COLORS.success)
-          .text('✓ Correct: ', 52, currentY, { continued: true })
+          .fillColor('#047857')
+          .text('✓ Correct: ', x + 6, cy, { continued: true })
           .font(FONTS.regular)
-          .text(
-            getCorrectAnswerText(
-              question.correctAnswer,
-              question.options,
-              question.questionType
-            )
-          );
+          .text(correctText, { width: innerW - 10 });
 
-        currentY = doc.y + 5;
+        cy = doc.y + 2;
 
+        // ── Explanation ──
         if (question.explanation) {
           doc
-            .fontSize(6.5)
+            .fontSize(5.5)
             .font(FONTS.italic)
             .fillColor(COLORS.slate)
-            .text(`💡 ${question.explanation}`, 52, currentY, { width: 500 });
-
-          currentY = doc.y + 5;
+            .text(`💡 ${question.explanation}`, x + 6, cy, { width: innerW - 6 });
+          cy = doc.y + 2;
         }
 
+        // Bottom border
         doc
-          .moveTo(32, currentY)
-          .lineTo(563, currentY)
+          .moveTo(x, cy + 2)
+          .lineTo(x + cw, cy + 2)
           .strokeColor('#E0E7FF')
-          .lineWidth(1)
+          .lineWidth(0.5)
           .stroke();
 
-        currentY += 8;
+        return cy + 6;
+      }
+
+      // ── Render all questions in 2 columns ──
+      questions.forEach((question, index) => {
+        const qHeight = measureQuestionHeight(doc, question, COL_WIDTH, index);
+
+        if (isLeftCol) {
+          // Check if this question fits on current page
+          if (colY + qHeight > PAGE_BOTTOM) {
+            addExactFooter(doc, doc.bufferedPageRange().count);
+            doc.addPage();
+            addWatermark(doc, logoPath);
+            colY = 50;
+            rightColY = 50;
+          }
+          const endY = drawQuestion(PAGE_LEFT, colY, question, index + 1);
+          // Next question goes to right column at same starting Y
+          rightColY = colY;
+          colY = endY; // left column bottom
+          isLeftCol = false;
+        } else {
+          // Right column
+          if (rightColY + qHeight > PAGE_BOTTOM) {
+            // Right col doesn't fit — start new page
+            // First, update colY to be below left column bottom
+            addExactFooter(doc, doc.bufferedPageRange().count);
+            doc.addPage();
+            addWatermark(doc, logoPath);
+            rightColY = 50;
+            colY = 50;
+            // Draw on left column of new page instead
+            const endY = drawQuestion(PAGE_LEFT, colY, question, index + 1);
+            rightColY = colY;
+            colY = endY;
+            isLeftCol = false;
+          } else {
+            const endY = drawQuestion(PAGE_LEFT + COL_WIDTH + COL_GAP, rightColY, question, index + 1);
+            // Both columns done; next question starts on left column
+            // at the Y that is the max of both column bottoms
+            colY = Math.max(colY, endY);
+            rightColY = colY;
+            isLeftCol = true;
+          }
+        }
       });
 
       addExactFooter(doc, doc.bufferedPageRange().count);

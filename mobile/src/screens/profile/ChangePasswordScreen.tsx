@@ -1,61 +1,83 @@
 // Change Password Screen
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { COLORS, SHADOWS } from '../../theme/theme';
-import { GradientHeader, AnimatedButton } from '../../components/SharedComponents';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS } from '../../theme/theme';
 import { authAPI } from '../../services/api';
 
 export default function ChangePasswordScreen({ navigation }: any) {
-    const [current, setCurrent] = useState('');
-    const [newPass, setNewPass] = useState('');
-    const [confirm, setConfirm] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
 
     const handleChange = async () => {
-        if (!current || !newPass || !confirm) { Alert.alert('Error', 'Fill all fields'); return; }
-        if (newPass !== confirm) { Alert.alert('Error', 'Passwords do not match'); return; }
-        if (newPass.length < 6) { Alert.alert('Error', 'Min 6 characters'); return; }
-        setLoading(true);
+        if (!currentPassword) { Alert.alert('Error', 'Current password is required.'); return; }
+        if (newPassword.length < 6) { Alert.alert('Error', 'New password must be at least 6 characters.'); return; }
+        if (newPassword !== confirmPassword) { Alert.alert('Error', 'Passwords do not match.'); return; }
         try {
-            await authAPI.changePassword({ currentPassword: current, newPassword: newPass });
-            Alert.alert('Success', 'Password changed!');
-            navigation.goBack();
-        } catch (err: any) { Alert.alert('Error', err.response?.data?.message || 'Failed'); }
-        finally { setLoading(false); }
+            setSaving(true);
+            await authAPI.changePassword({ currentPassword, newPassword });
+            Alert.alert('✅ Updated', 'Password changed successfully.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+        } catch (err: any) {
+            Alert.alert('Error', err.response?.data?.message || 'Failed to change password');
+        } finally { setSaving(false); }
     };
 
-    const Field = ({ label, value, onChangeText, delay }: any) => (
-        <Animated.View entering={FadeInDown.delay(delay)} style={s.group}>
-            <Text style={s.label}>{label}</Text>
-            <View style={s.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />
-                <TextInput value={value} onChangeText={onChangeText} secureTextEntry style={s.input} />
-            </View>
-        </Animated.View>
-    );
-
     return (
-        <View style={s.container}>
-            <GradientHeader title="Change Password" showBack onBack={() => navigation.goBack()} />
-            <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-                <Field label="Current Password" value={current} onChangeText={setCurrent} delay={200} />
-                <Field label="New Password" value={newPass} onChangeText={setNewPass} delay={300} />
-                <Field label="Confirm New Password" value={confirm} onChangeText={setConfirm} delay={400} />
-                <Animated.View entering={FadeInDown.delay(500)}>
-                    <AnimatedButton title="Change Password" onPress={handleChange} loading={loading} icon="key-outline" />
+        <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <LinearGradient colors={[COLORS.primaryDarker, COLORS.primary]} style={s.header}>
+                <View style={s.headerRow}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={COLORS.textWhite} /></TouchableOpacity>
+                    <Text style={s.headerTitle}>Change Password</Text>
+                </View>
+            </LinearGradient>
+
+            <View style={s.content}>
+                <Animated.View entering={FadeInDown.delay(100)} style={s.lockIcon}>
+                    <Ionicons name="lock-closed" size={32} color={COLORS.primary} />
                 </Animated.View>
-            </ScrollView>
-        </View>
+
+                {[
+                    { label: 'Current Password', value: currentPassword, setter: setCurrentPassword, show: showCurrent, toggle: () => setShowCurrent(!showCurrent) },
+                    { label: 'New Password', value: newPassword, setter: setNewPassword, show: showNew, toggle: () => setShowNew(!showNew) },
+                    { label: 'Confirm New Password', value: confirmPassword, setter: setConfirmPassword, show: showNew, toggle: () => {} },
+                ].map((field, i) => (
+                    <Animated.View key={field.label} entering={FadeInDown.delay(150 + i * 50)}>
+                        <Text style={s.label}>{field.label}</Text>
+                        <View style={s.inputRow}>
+                            <TextInput value={field.value} onChangeText={field.setter} placeholder={field.label} placeholderTextColor={COLORS.placeholder} style={s.input} secureTextEntry={!field.show} />
+                            {i < 2 && <TouchableOpacity onPress={field.toggle} style={s.eyeBtn}><Ionicons name={field.show ? 'eye-off' : 'eye'} size={20} color={COLORS.textLight} /></TouchableOpacity>}
+                        </View>
+                    </Animated.View>
+                ))}
+
+                <Animated.View entering={FadeInDown.delay(350)}>
+                    <TouchableOpacity style={s.saveBtn} onPress={handleChange} disabled={saving}>
+                        {saving ? <ActivityIndicator color={COLORS.textWhite} /> : <Text style={s.saveBtnText}>Change Password</Text>}
+                    </TouchableOpacity>
+                </Animated.View>
+            </View>
+        </KeyboardAvoidingView>
     );
 }
 
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    content: { padding: 16 },
-    group: { marginBottom: 16 },
-    label: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 8 },
-    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, height: 52, borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.sm },
-    input: { flex: 1, fontSize: 15, color: COLORS.text, marginLeft: 10 },
+    header: { paddingTop: 52, paddingBottom: 20, paddingHorizontal: SPACING.base, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+    headerRow: { flexDirection: 'row', alignItems: 'center' },
+    backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: SPACING.md },
+    headerTitle: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.bold, color: COLORS.textWhite },
+    content: { padding: SPACING.base },
+    lockIcon: { alignItems: 'center', marginVertical: SPACING.lg, width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primaryBg, justifyContent: 'center', alignSelf: 'center' },
+    label: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.semibold, color: COLORS.text, marginBottom: SPACING.xs, marginTop: SPACING.md },
+    inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border },
+    input: { flex: 1, paddingHorizontal: SPACING.base, paddingVertical: SPACING.md, fontSize: FONTS.sizes.md, color: COLORS.text },
+    eyeBtn: { paddingHorizontal: SPACING.md },
+    saveBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, paddingVertical: SPACING.md, marginTop: SPACING.xl, ...SHADOWS.green },
+    saveBtnText: { fontSize: FONTS.sizes.base, fontWeight: FONTS.weights.bold, color: COLORS.textWhite },
 });

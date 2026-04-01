@@ -117,10 +117,12 @@ export default function QuizPayment() {
       return;
     }
 
+    // Prevent double-click
+    if (creatingOrder) return;
+
     try {
       setCreatingOrder(true);
 
-      // ✅ CHANGED: Create quiz payment order with apiClient
       const response = await apiClient.post(`/payment/quiz/${quizId}/create-order`, {
         couponCode: appliedCoupon?.code || undefined,
       });
@@ -140,7 +142,6 @@ export default function QuizPayment() {
         order_id: orderId,
         handler: async function (response: any) {
           try {
-            // ✅ CHANGED: Verify payment with apiClient
             const verifyResponse = await apiClient.post("/payment/verify", {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -154,26 +155,22 @@ export default function QuizPayment() {
               );
             }
 
-            // ✅ Show success message
             toast({
               title: "Payment successful! 🎉",
               description: "You now have access to this quiz.",
             });
 
-            // ✅ Redirect with full page reload to refresh data
             setTimeout(() => {
-              window.location.href = "/quizzes"; // Force refresh
+              window.location.href = "/quizzes";
             }, 1500);
-
           } catch (error: any) {
             console.error("Verify payment error:", error);
             toast({
               title: "Payment verification failed",
-              description: error.response?.data?.message || error.message || "Please contact support.", // ✅ CHANGED
+              description: error.response?.data?.message || error.message || "Please contact support.",
               variant: "destructive",
             });
-            
-            // Also redirect to failure with refresh
+            setCreatingOrder(false);
             setTimeout(() => {
               window.location.href = "/payment/failure";
             }, 1500);
@@ -182,6 +179,8 @@ export default function QuizPayment() {
 
         modal: {
           ondismiss: function () {
+            // ✅ FIX: Only reset here when user closes modal
+            setCreatingOrder(false);
             toast({
               title: "Payment cancelled",
               description: "You can try again whenever you are ready.",
@@ -202,15 +201,34 @@ export default function QuizPayment() {
       };
 
       const rzp = new window.Razorpay(options);
+
+      // ✅ FIX: Handle payment failures within the modal
+      rzp.on('payment.failed', function (resp: any) {
+        console.error('Payment failed:', resp.error);
+        toast({
+          title: "Payment Failed",
+          description: resp.error?.description || "Payment was not completed.",
+          variant: "destructive",
+        });
+        setCreatingOrder(false);
+      });
+
       rzp.open();
+      // ✅ FIX: Do NOT setCreatingOrder(false) here — modal is still open!
     } catch (error: any) {
       console.error("Create order error:", error);
+
+      // ✅ FIX: Clear invalid coupon so user doesn't get stuck in a loop
+      if (error.response?.data?.message?.includes('coupon') || error.message?.includes('coupon')) {
+        setAppliedCoupon(null);
+        setCouponCode('');
+      }
+
       toast({
-        title: "Payment failed to start",
-        description: error.response?.data?.message || error.message || "Please try again later.", // ✅ CHANGED
+        title: "Payment Error",
+        description: error.response?.data?.message || error.message || "Please try again later.",
         variant: "destructive",
       });
-    } finally {
       setCreatingOrder(false);
     }
   };

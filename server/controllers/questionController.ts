@@ -27,7 +27,7 @@ export async function getQuestionsByQuizId(req: Request, res: Response): Promise
     return res.json({ success: true, count: quizQuestions.length, questions: quizQuestions });
   } catch (error: any) {
     console.error('[GET QUESTIONS ERROR]', error);
-    return res.status(500).json({ success: false, message: 'Failed to fetch questions', error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to fetch questions', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
   }
 }
 
@@ -76,7 +76,7 @@ export async function addQuestion(req: Request, res: Response): Promise<Response
     return res.status(201).json({ success: true, message: 'Question added successfully', questionId: result.insertId });
   } catch (error: any) {
     console.error('[ADD QUESTION ERROR]', error);
-    return res.status(500).json({ success: false, message: 'Failed to add question', error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to add question', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
   }
 }
 
@@ -127,7 +127,7 @@ export async function addBulkQuestions(req: Request, res: Response): Promise<Res
     return res.status(201).json({ success: true, message: `${questionsList.length} questions added successfully`, count: questionsList.length });
   } catch (error: any) {
     console.error('[ADD BULK QUESTIONS ERROR]', error);
-    return res.status(500).json({ success: false, message: 'Failed to add questions', error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to add questions', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
   }
 }
 
@@ -178,7 +178,7 @@ export async function updateQuestion(req: Request, res: Response): Promise<Respo
     return res.json({ success: true, message: 'Question updated successfully' });
   } catch (error: any) {
     console.error('[UPDATE QUESTION ERROR]', error);
-    return res.status(500).json({ success: false, message: 'Failed to update question', error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to update question', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
   }
 }
 
@@ -210,7 +210,7 @@ export async function deleteQuestion(req: Request, res: Response): Promise<Respo
     return res.json({ success: true, message: 'Question deleted successfully' });
   } catch (error: any) {
     console.error('[DELETE QUESTION ERROR]', error);
-    return res.status(500).json({ success: false, message: 'Failed to delete question', error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to delete question', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
   }
 }
 
@@ -237,6 +237,6 @@ export async function getQuestionById(req: Request, res: Response): Promise<Resp
     return res.json({ success: true, question });
   } catch (error: any) {
     console.error('[GET QUESTION BY ID ERROR]', error);
-    return res.status(500).json({ success: false, message: 'Failed to fetch question', error: error.message });
+    return res.status(500).json({ success: false, message: 'Failed to fetch question', ...(process.env.NODE_ENV === 'development' && { error: error.message }) });
   }
 }

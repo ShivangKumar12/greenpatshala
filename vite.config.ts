@@ -43,9 +43,5 @@ export default defineConfig(({ mode }) => {
                 }
             }
         },
-        // Manually expose VITE_ env vars
-        define: {
-            'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || `${backendURL}/api`),
-        }
     };
 });

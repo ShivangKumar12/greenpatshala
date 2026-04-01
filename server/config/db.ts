@@ -18,8 +18,9 @@ export const poolConnection = mysql.createPool({
   })(),
   database: process.env.DB_NAME || 'unchi_udaan_demo',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 50,      // ✅ BUG-012 FIX: Increased from 10 for concurrent load
   queueLimit: 0,
+  connectTimeout: 30000,    // 30s connection timeout
   timezone: 'Z',
   dateStrings: true,
 });

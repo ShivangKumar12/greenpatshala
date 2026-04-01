@@ -1,62 +1,86 @@
 // Edit Profile Screen
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../../theme/theme';
-import { GradientHeader, AnimatedButton } from '../../components/SharedComponents';
-import { useAuth } from '../../context/AuthContext';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS } from '../../theme/theme';
 import { authAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function EditProfileScreen({ navigation }: any) {
-    const { user, updateUser } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [name, setName] = useState(user?.name || '');
     const [phone, setPhone] = useState(user?.phone || '');
-    const [bio, setBio] = useState(user?.bio || '');
-    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     const handleSave = async () => {
-        setLoading(true);
+        if (!name.trim()) { Alert.alert('Error', 'Name is required.'); return; }
         try {
-            await authAPI.updateProfile({ name, phone, bio });
-            updateUser({ name, phone, bio });
-            Alert.alert('Success', 'Profile updated!');
-            navigation.goBack();
+            setSaving(true);
+            await authAPI.updateProfile({ name: name.trim(), phone: phone.trim() });
+            if (refreshUser) await refreshUser();
+            Alert.alert('✅ Updated', 'Profile updated successfully.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
         } catch (err: any) {
-            Alert.alert('Error', err.response?.data?.message || 'Update failed');
-        } finally { setLoading(false); }
+            Alert.alert('Error', err.response?.data?.message || 'Failed to update');
+        } finally { setSaving(false); }
     };
 
-    const Field = ({ label, value, onChangeText, icon, multiline, delay }: any) => (
-        <Animated.View entering={FadeInDown.delay(delay)} style={s.group}>
-            <Text style={s.label}>{label}</Text>
-            <View style={[s.inputWrap, multiline && { height: 100, alignItems: 'flex-start', paddingTop: 12 }]}>
-                <Ionicons name={icon} size={20} color={COLORS.textSecondary} />
-                <TextInput value={value} onChangeText={onChangeText} style={[s.input, multiline && { textAlignVertical: 'top' }]} multiline={multiline} />
-            </View>
-        </Animated.View>
-    );
-
     return (
-        <View style={s.container}>
-            <GradientHeader title="Edit Profile" showBack onBack={() => navigation.goBack()} />
-            <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                <Field label="Full Name" value={name} onChangeText={setName} icon="person-outline" delay={200} />
-                <Field label="Phone" value={phone} onChangeText={setPhone} icon="call-outline" delay={300} />
-                <Field label="Bio" value={bio} onChangeText={setBio} icon="create-outline" multiline delay={400} />
-                <Animated.View entering={FadeInDown.delay(500)}>
-                    <AnimatedButton title="Save Changes" onPress={handleSave} loading={loading} icon="checkmark-circle-outline" />
+        <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <LinearGradient colors={[COLORS.primaryDarker, COLORS.primary]} style={s.header}>
+                <View style={s.headerRow}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Ionicons name="arrow-back" size={22} color={COLORS.textWhite} /></TouchableOpacity>
+                    <Text style={s.headerTitle}>Edit Profile</Text>
+                </View>
+            </LinearGradient>
+
+            <View style={s.content}>
+                <Animated.View entering={FadeInDown.delay(100)} style={s.avatarSection}>
+                    <View style={s.avatar}><Text style={s.avatarText}>{(name || 'S')[0].toUpperCase()}</Text></View>
+                    <Text style={s.email}>{user?.email}</Text>
                 </Animated.View>
-            </ScrollView>
-        </View>
+
+                <Animated.View entering={FadeInDown.delay(200)}>
+                    <Text style={s.label}>Full Name</Text>
+                    <TextInput value={name} onChangeText={setName} placeholder="Enter your name" placeholderTextColor={COLORS.placeholder} style={s.input} />
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.delay(250)}>
+                    <Text style={s.label}>Phone Number</Text>
+                    <TextInput value={phone} onChangeText={setPhone} placeholder="Enter phone number" placeholderTextColor={COLORS.placeholder} style={s.input} keyboardType="phone-pad" />
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.delay(300)}>
+                    <Text style={s.label}>Email</Text>
+                    <View style={[s.input, s.disabledInput]}><Text style={s.disabledText}>{user?.email}</Text></View>
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.delay(350)}>
+                    <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving}>
+                        {saving ? <ActivityIndicator color={COLORS.textWhite} /> : <Text style={s.saveBtnText}>Save Changes</Text>}
+                    </TouchableOpacity>
+                </Animated.View>
+            </View>
+        </KeyboardAvoidingView>
     );
 }
 
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    content: { padding: 16 },
-    group: { marginBottom: 16 },
-    label: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 8 },
-    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, height: 52, borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.sm },
-    input: { flex: 1, fontSize: 15, color: COLORS.text, marginLeft: 10 },
+    header: { paddingTop: 52, paddingBottom: 20, paddingHorizontal: SPACING.base, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+    headerRow: { flexDirection: 'row', alignItems: 'center' },
+    backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: SPACING.md },
+    headerTitle: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.bold, color: COLORS.textWhite },
+    content: { padding: SPACING.base },
+    avatarSection: { alignItems: 'center', marginBottom: SPACING.xl },
+    avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryBg, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.sm },
+    avatarText: { fontSize: FONTS.sizes['3xl'], fontWeight: FONTS.weights.bold, color: COLORS.primary },
+    email: { fontSize: FONTS.sizes.md, color: COLORS.textSecondary },
+    label: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.semibold, color: COLORS.text, marginBottom: SPACING.xs, marginTop: SPACING.md },
+    input: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, paddingHorizontal: SPACING.base, paddingVertical: SPACING.md, fontSize: FONTS.sizes.md, color: COLORS.text, borderWidth: 1, borderColor: COLORS.border },
+    disabledInput: { backgroundColor: COLORS.borderLight },
+    disabledText: { fontSize: FONTS.sizes.md, color: COLORS.textLight },
+    saveBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, paddingVertical: SPACING.md, marginTop: SPACING.xl, ...SHADOWS.green },
+    saveBtnText: { fontSize: FONTS.sizes.base, fontWeight: FONTS.weights.bold, color: COLORS.textWhite },
 });

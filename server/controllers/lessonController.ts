@@ -31,7 +31,7 @@ export const getCourseContent = async (req: Request, res: Response): Promise<Res
     }
 
     // Check enrollment
-    const [enrollment] = await db
+    let [enrollment] = await db
       .select()
       .from(enrollments)
       .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
@@ -40,10 +40,30 @@ export const getCourseContent = async (req: Request, res: Response): Promise<Res
     console.log('[GET COURSE CONTENT] Enrollment found:', !!enrollment);
 
     if (!enrollment) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not enrolled in this course',
-      });
+      // Auto-enroll for free courses
+      const [courseCheck] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
+      if (courseCheck && courseCheck.isFree) {
+        console.log('[GET COURSE CONTENT] Auto-enrolling user in free course:', { userId, courseId });
+        await db.insert(enrollments).values({
+          userId,
+          courseId,
+          progress: 0,
+          completedLessons: 0,
+          accessGrantedAt: new Date(),
+        });
+        // Re-fetch the enrollment record
+        [enrollment] = await db
+          .select()
+          .from(enrollments)
+          .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
+          .limit(1);
+        console.log('[GET COURSE CONTENT] Auto-enrollment successful');
+      } else {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not enrolled in this course',
+        });
+      }
     }
 
     // Fetch course info
@@ -199,7 +219,7 @@ export const getCourseContent = async (req: Request, res: Response): Promise<Res
     });
   } catch (error: any) {
     console.error('[GET COURSE CONTENT ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });

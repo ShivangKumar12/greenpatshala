@@ -6,6 +6,7 @@ const KEYS = {
     USER: '@unchiudaan_user',
     ONBOARDED: '@unchiudaan_onboarded',
     THEME: '@unchiudaan_theme',
+    API_URL: '@unchiudaan_api_url',
 };
 
 export const storage = {

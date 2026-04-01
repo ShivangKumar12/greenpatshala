@@ -113,10 +113,12 @@ export default function CoursePayment() {
       return;
     }
 
+    // Prevent double-click
+    if (creatingOrder) return;
+
     try {
       setCreatingOrder(true);
 
-      // ✅ CREATE ORDER WITH API CLIENT
       const response = await apiClient.post(`/payment/course/${id}/create-order`, {
         couponCode: appliedCoupon?.code || undefined,
       });
@@ -136,7 +138,6 @@ export default function CoursePayment() {
         order_id: orderId,
         handler: async function (razorpayResponse: any) {
           try {
-            // ✅ VERIFY PAYMENT WITH API CLIENT
             const verifyResponse = await apiClient.post('/payment/verify', {
               razorpay_order_id: razorpayResponse.razorpay_order_id,
               razorpay_payment_id: razorpayResponse.razorpay_payment_id,
@@ -152,7 +153,6 @@ export default function CoursePayment() {
               description: 'You have been enrolled in this course.',
             });
             
-            // Redirect to success page or course page
             setTimeout(() => {
               setLocation(`/learn/${id}`);
             }, 1500);
@@ -163,16 +163,18 @@ export default function CoursePayment() {
               description: error.response?.data?.message || error.message || 'Please contact support.',
               variant: 'destructive',
             });
+            setCreatingOrder(false);
             setLocation('/payment/failure');
           }
         },
         modal: {
           ondismiss: function () {
+            // ✅ FIX: Only reset here when user closes modal
+            setCreatingOrder(false);
             toast({
               title: 'Payment cancelled',
               description: 'You can try again whenever you are ready.',
             });
-            setCreatingOrder(false);
           },
         },
         prefill: {
@@ -189,11 +191,29 @@ export default function CoursePayment() {
       };
 
       const rzp = new window.Razorpay(options);
+
+      rzp.on('payment.failed', function (resp: any) {
+        console.error('Payment failed:', resp.error);
+        toast({
+          title: 'Payment Failed',
+          description: resp.error?.description || 'Payment was not completed.',
+          variant: 'destructive',
+        });
+        setCreatingOrder(false);
+      });
+
       rzp.open();
+      // ✅ FIX: Do NOT reset creatingOrder here — modal is still open!
     } catch (error: any) {
       console.error('Create order error:', error);
+
+      if (error.response?.data?.message?.includes('coupon') || error.message?.includes('coupon')) {
+        setAppliedCoupon(null);
+        setCouponCode('');
+      }
+
       toast({
-        title: 'Payment failed to start',
+        title: 'Payment Error',
         description: error.response?.data?.message || error.message || 'Please try again later.',
         variant: 'destructive',
       });

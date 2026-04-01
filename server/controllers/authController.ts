@@ -1,4 +1,4 @@
-﻿// server/controllers/authController.ts - PRODUCTION READY ✅ FIXED
+// server/controllers/authController.ts - PRODUCTION READY ✅ FIXED
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -16,16 +16,17 @@ const OTP_LENGTH = 6;
 const PASSWORD_MIN_LENGTH = 8;
 const RESET_TOKEN_LENGTH = 64;
 const RESET_TOKEN_EXPIRY_HOURS = 1;
-const ALLOWED_ROLES = ['user', 'instructor', 'admin'] as const;
+// ✅ BUG-002 FIX: Only 'user' allowed via public registration
+// Admin/instructor accounts must be created via admin panel
+const ALLOWED_ROLES = ['user'] as const;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
+// ✅ BUG-006 FIX: Use cryptographically secure random for OTP
 const generateOTP = (): string => {
-  return Math.floor(
-    Math.pow(10, OTP_LENGTH - 1) + Math.random() * 9 * Math.pow(10, OTP_LENGTH - 1)
-  ).toString();
+  return crypto.randomInt(100000, 999999).toString();
 };
 
 const validatePasswordStrength = (password: string): { valid: boolean; message?: string } => {
@@ -80,13 +81,9 @@ export const register = async (req: Request, res: Response): Promise<Response> =
       });
     }
 
-    const userRole = role.toLowerCase() as (typeof ALLOWED_ROLES)[number];
-    if (!ALLOWED_ROLES.includes(userRole)) {
-      return (res as any).status(400).json({
-        success: false,
-        message: 'Invalid role specified. Allowed roles: user, instructor, admin',
-      });
-    }
+    // ✅ BUG-002 FIX: Force role to 'user' for public registration
+    const userRole = 'user' as const;
+    // Ignore any client-supplied role — only admin panel can create admin/instructor
 
     const existingUser = await db
       .select({ id: users.id })
@@ -102,8 +99,11 @@ export const register = async (req: Request, res: Response): Promise<Response> =
     }
 
     const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const isAutoVerified = userRole === 'admin' || userRole === 'instructor';
-    const otp = isAutoVerified ? null : generateOTP();
+    // ✅ BUG-002 FIX: All public registrations require email verification
+    const otp = generateOTP();
+
+    // ✅ BUG-005 FIX: Set OTP expiry (10 minutes from now)
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
 
     const [result]: any = await db.insert(users).values({
       name: name.trim(),
@@ -111,34 +111,29 @@ export const register = async (req: Request, res: Response): Promise<Response> =
       password: hashedPassword,
       role: userRole,
       email_verification_token: otp,
-      is_verified: isAutoVerified,
+      email_verification_expires: otpExpiry,
+      is_verified: false,
     });
 
-    if (!isAutoVerified && otp) {
-      sendOTPEmail(sanitizedEmail, otp, name.trim()).catch((err) => {
-        console.error('[EMAIL ERROR] Failed to send OTP:', {
-          email: sanitizedEmail,
-          error: err.message,
-          timestamp: new Date().toISOString(),
-        });
+    sendOTPEmail(sanitizedEmail, otp, name.trim()).catch((err) => {
+      console.error('[EMAIL ERROR] Failed to send OTP:', {
+        email: sanitizedEmail,
+        error: err.message,
+        timestamp: new Date().toISOString(),
       });
-    }
-
-    const responseMessage = isAutoVerified
-      ? `${userRole.charAt(0).toUpperCase() + userRole.slice(1)} account created successfully!`
-      : 'Registration successful! Please check your email for verification code.';
+    });
 
     return (res as any).status(201).json({
       success: true,
-      message: responseMessage,
+      message: 'Registration successful! Please check your email for verification code.',
       userId: result.insertId,
       email: sanitizedEmail,
-      requiresVerification: !isAutoVerified,
-      ...(process.env.NODE_ENV === 'development' && !isAutoVerified && { devOtp: otp }),
+      requiresVerification: true,
+      ...(process.env.NODE_ENV === 'development' && { devOtp: otp }),
     });
   } catch (error: any) {
     console.error('[REGISTER ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -175,6 +170,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<Response> 
         avatar: users.avatar,
         is_verified: users.is_verified,
         email_verification_token: users.email_verification_token,
+        email_verification_expires: users.email_verification_expires,
       })
       .from(users)
       .where(eq(users.email, sanitizedEmail))
@@ -199,6 +195,17 @@ export const verifyOTP = async (req: Request, res: Response): Promise<Response> 
         success: false,
         message: 'Invalid verification code. Please check and try again.',
       });
+    }
+
+    // ✅ BUG-005 FIX: Check OTP expiry
+    if (user.email_verification_expires) {
+      const expiryDate = new Date(user.email_verification_expires);
+      if (expiryDate < new Date()) {
+        return (res as any).status(410).json({
+          success: false,
+          message: 'Verification code has expired. Please request a new one.',
+        });
+      }
     }
 
     await db
@@ -226,7 +233,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<Response> 
     });
   } catch (error: any) {
     console.error('[VERIFY OTP ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -301,7 +308,7 @@ export const resendOTP = async (req: Request, res: Response): Promise<Response> 
     });
   } catch (error: any) {
     console.error('[RESEND OTP ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -456,7 +463,7 @@ export const getMe = async (req: Request, res: Response): Promise<Response> => {
     });
   } catch (error: any) {
     console.error('[GET ME ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -543,7 +550,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<Respo
     });
   } catch (error: any) {
     console.error('[FORGOT PASSWORD ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -622,7 +629,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
     });
   } catch (error: any) {
     console.error('[RESET PASSWORD ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       stack: error.stack,
       timestamp: new Date().toISOString(),
     });
@@ -694,7 +701,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<Respon
     });
   } catch (error: any) {
     console.error('[UPDATE PROFILE ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -771,7 +778,7 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
     });
   } catch (error: any) {
     console.error('[CHANGE PASSWORD ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -810,7 +817,7 @@ export const enable2FA = async (req: Request, res: Response): Promise<Response> 
     });
   } catch (error: any) {
     console.error('[ENABLE 2FA ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -846,7 +853,7 @@ export const disable2FA = async (req: Request, res: Response): Promise<Response>
     });
   } catch (error: any) {
     console.error('[DISABLE 2FA ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -915,7 +922,7 @@ export const updateNotificationPreferences = async (
     });
   } catch (error: any) {
     console.error('[UPDATE NOTIFICATION PREFERENCES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({
@@ -967,7 +974,7 @@ export const getNotificationPreferences = async (
     });
   } catch (error: any) {
     console.error('[GET NOTIFICATION PREFERENCES ERROR]', {
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { ...(process.env.NODE_ENV === 'development' && { error: error.message }) }),
       timestamp: new Date().toISOString(),
     });
     return (res as any).status(500).json({

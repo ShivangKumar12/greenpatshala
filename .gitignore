@@ -1,5 +1,16 @@
 node_modules
 dist
+
+# ✅ BUG-001 FIX: Never commit secrets
+.env
+.env.production
+.env.local
+.env.local.backup
+.env.*.local
+
+# Logs
+*.log
+backend.log
 .DS_Store
 server/public
 vite.config.ts.*

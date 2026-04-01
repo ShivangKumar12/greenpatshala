@@ -18,12 +18,23 @@ export const users = mysqlTable('users', {
   is_active: boolean('is_active').notNull().default(true),
 
   email_verification_token: varchar('email_verification_token', { length: 10 }),
+  // ✅ BUG-005 FIX: OTP expiry timestamp
+  email_verification_expires: datetime('email_verification_expires', { mode: 'string' }),
 
   // ✅ CORRECT: reset_password_token (not password_reset_token)
   reset_password_token: varchar('reset_password_token', { length: 255 }),
   reset_password_expires: datetime('reset_password_expires', { mode: 'string' }),
 
   google_id: varchar('google_id', { length: 255 }),
+
+  // ✅ BUG-023 FIX: 2FA columns
+  two_factor_enabled: boolean('two_factor_enabled').notNull().default(false),
+  two_factor_secret: varchar('two_factor_secret', { length: 255 }),
+
+  // ✅ BUG-024 FIX: Notification preference columns
+  email_notifications: boolean('email_notifications').notNull().default(true),
+  course_updates: boolean('course_updates').notNull().default(true),
+  quiz_reminders: boolean('quiz_reminders').notNull().default(true),
 
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
@@ -607,3 +618,68 @@ export const certificates = mysqlTable('certificates', {
 
 export type Certificate = typeof certificates.$inferSelect;
 export type NewCertificate = typeof certificates.$inferInsert;
+
+// ============================================
+// MOBILE APP SETTINGS TABLE
+// ============================================
+export const mobileAppSettings = mysqlTable('mobile_app_settings', {
+  id: int('id').primaryKey().autoincrement(),
+
+  // General App Config
+  appName: varchar('app_name', { length: 255 }).notNull().default('Unchi Udaan'),
+  appVersion: varchar('app_version', { length: 50 }).notNull().default('1.0.0'),
+  minAppVersion: varchar('min_app_version', { length: 50 }).notNull().default('1.0.0'),
+  maintenanceMode: boolean('maintenance_mode').notNull().default(false),
+  maintenanceMessage: text('maintenance_message'),
+  forceUpdate: boolean('force_update').notNull().default(false),
+  updateUrl: varchar('update_url', { length: 500 }),
+
+  // Push Notifications
+  notificationsEnabled: boolean('notifications_enabled').notNull().default(true),
+  notificationTitle: varchar('notification_title', { length: 255 }),
+  notificationBody: text('notification_body'),
+  notificationImageUrl: varchar('notification_image_url', { length: 500 }),
+  notificationTargetScreen: varchar('notification_target_screen', { length: 100 }),
+
+  // Home Banner / Carousel
+  bannersEnabled: boolean('banners_enabled').notNull().default(true),
+  banners: json('banners'), // Array of { imageUrl, title, linkUrl, isActive, order }
+
+  // Advertisements
+  adsEnabled: boolean('ads_enabled').notNull().default(false),
+  adBannerImageUrl: varchar('ad_banner_image_url', { length: 500 }),
+  adBannerLinkUrl: varchar('ad_banner_link_url', { length: 500 }),
+  adInterstitialEnabled: boolean('ad_interstitial_enabled').notNull().default(false),
+  adFrequency: int('ad_frequency').notNull().default(5), // show ad every N screens
+
+  // Content Visibility
+  showCourses: boolean('show_courses').notNull().default(true),
+  showQuizzes: boolean('show_quizzes').notNull().default(true),
+  showJobs: boolean('show_jobs').notNull().default(true),
+  showCurrentAffairs: boolean('show_current_affairs').notNull().default(true),
+  showStudyMaterials: boolean('show_study_materials').notNull().default(true),
+  showLiveClasses: boolean('show_live_classes').notNull().default(false),
+
+  // Popup / Announcement
+  popupEnabled: boolean('popup_enabled').notNull().default(false),
+  popupTitle: varchar('popup_title', { length: 255 }),
+  popupMessage: text('popup_message'),
+  popupImageUrl: varchar('popup_image_url', { length: 500 }),
+  popupActionUrl: varchar('popup_action_url', { length: 500 }),
+  popupActionLabel: varchar('popup_action_label', { length: 100 }),
+
+  // Support
+  supportWhatsapp: varchar('support_whatsapp', { length: 50 }),
+  supportEmail: varchar('support_email', { length: 255 }),
+  supportPhone: varchar('support_phone', { length: 50 }),
+
+  // API Config
+  apiBaseUrl: varchar('api_base_url', { length: 500 }),
+  apiDocsUrl: varchar('api_docs_url', { length: 500 }),
+
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+});
+
+export type MobileAppSetting = typeof mobileAppSettings.$inferSelect;
+export type NewMobileAppSetting = typeof mobileAppSettings.$inferInsert;
