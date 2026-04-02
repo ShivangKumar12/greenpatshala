@@ -189,7 +189,14 @@ export const settingsAPI = {
 // TESTIMONIALS API
 // ============================================
 export const testimonialsAPI = {
-    getPublic: () => api.get('/testimonials/public'),
+    getPublic: () => api.get('/testimonials'),
+};
+
+// ============================================
+// MOBILE SETTINGS API
+// ============================================
+export const mobileSettingsAPI = {
+    getPublic: () => api.get('/mobile-settings/public'),
 };
 
 export default api;

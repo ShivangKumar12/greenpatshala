@@ -8,9 +8,10 @@ const uploadDirs = [
   'uploads/courses/videos',
   'uploads/courses/pdfs',
   'uploads/courses/assets',
-  'uploads/courses/thumbnails',    // ✅ ADD THIS FOR COURSE THUMBNAILS
+  'uploads/courses/thumbnails',
   'uploads/study-materials',
-  'uploads/thumbnails',             // General thumbnails
+  'uploads/thumbnails',
+  'uploads/mobile-banners',          // Mobile banner & promo images
 ];
 
 uploadDirs.forEach((dir) => {
@@ -102,3 +103,35 @@ export const uploadStudyMaterial = multer({
 
 // Export single file upload middleware
 export const uploadSingle = uploadStudyMaterial.single('file');
+
+// ============================================
+// MOBILE BANNER UPLOADS (images only, max 10MB)
+// ============================================
+const mobileBannerStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, 'uploads/mobile-banners');
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9]/g, '-');
+    cb(null, `mobile-${name}-${uniqueSuffix}${ext}`);
+  },
+});
+
+const mobileBannerFileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (allowedImageTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files (JPEG, PNG, GIF, WebP) are allowed for mobile banners'));
+  }
+};
+
+export const uploadMobileBanner = multer({
+  storage: mobileBannerStorage,
+  fileFilter: mobileBannerFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max for mobile banners
+  },
+});

@@ -13,6 +13,14 @@ export interface BannerItem {
   order: number;
 }
 
+export interface PromoBannerItem {
+  imageUrl: string;
+  title: string;
+  linkUrl: string;
+  isActive: boolean;
+  order: number;
+}
+
 export interface MobileAppSettings {
   id?: number;
 
@@ -64,6 +72,14 @@ export interface MobileAppSettings {
   supportEmail: string | null;
   supportPhone: string | null;
 
+  // Legacy Promotional Banners
+  promoBanner1: PromoBannerItem | string | null;
+  promoBanner2: PromoBannerItem | string | null;
+
+  // NEW: Multiple Promotional Banners
+  promoBanners: PromoBannerItem[] | string | null;
+  promoDisplayMode: 'carousel' | 'list';
+
   // API Config
   apiBaseUrl: string | null;
   apiDocsUrl: string | null;
@@ -75,6 +91,15 @@ export interface MobileAppSettings {
 export interface MobileSettingsResponse {
   success: boolean;
   settings: MobileAppSettings;
+  message?: string;
+}
+
+export interface UploadImageResponse {
+  success: boolean;
+  imageUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
   message?: string;
 }
 
@@ -91,5 +116,20 @@ export const updateMobileSettings = async (
   settings: Partial<MobileAppSettings>
 ): Promise<MobileSettingsResponse> => {
   const { data } = await apiClient.put<MobileSettingsResponse>('/admin/mobile-settings', settings);
+  return data;
+};
+
+export const uploadMobileBannerImage = async (
+  file: File
+): Promise<UploadImageResponse> => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const { data } = await apiClient.post<UploadImageResponse>(
+    '/admin/mobile-settings/upload-image',
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  );
   return data;
 };

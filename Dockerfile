@@ -63,7 +63,7 @@ COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create uploads directory
-RUN mkdir -p /app/uploads/study-materials /app/uploads/current-affairs /app/uploads/courses/thumbnails /app/uploads/courses/pdfs /app/uploads/courses/videos /app/uploads/quizzes
+RUN mkdir -p /app/uploads/study-materials /app/uploads/current-affairs /app/uploads/courses/thumbnails /app/uploads/courses/pdfs /app/uploads/courses/videos /app/uploads/quizzes /app/uploads/mobile-banners
 
 # Set environment
 ENV NODE_ENV=production

@@ -673,6 +673,14 @@ export const mobileAppSettings = mysqlTable('mobile_app_settings', {
   supportEmail: varchar('support_email', { length: 255 }),
   supportPhone: varchar('support_phone', { length: 50 }),
 
+  // Promotional Banners (Full-width strips on homepage)
+  promoBanner1: json('promo_banner_1'), // { imageUrl, linkUrl, isActive } — legacy
+  promoBanner2: json('promo_banner_2'), // { imageUrl, linkUrl, isActive } — legacy
+
+  // Multiple Promotional Banners (new dynamic system)
+  promoBanners: json('promo_banners'), // Array of { imageUrl, title, linkUrl, isActive, order }
+  promoDisplayMode: varchar('promo_display_mode', { length: 20 }).default('carousel'), // 'carousel' | 'list'
+
   // API Config
   apiBaseUrl: varchar('api_base_url', { length: 500 }),
   apiDocsUrl: varchar('api_docs_url', { length: 500 }),

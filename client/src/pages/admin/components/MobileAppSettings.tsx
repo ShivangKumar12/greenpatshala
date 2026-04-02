@@ -37,13 +37,19 @@ import {
   Globe,
   Link2,
   Server,
+  Upload,
+  Info,
+  LayoutList,
+  GalleryHorizontal,
 } from 'lucide-react';
 
 import {
   getMobileSettings,
   updateMobileSettings,
+  uploadMobileBannerImage,
   type MobileAppSettings as MobileSettings,
   type BannerItem,
+  type PromoBannerItem,
 } from '@/services/mobileSettingsApi';
 
 // ============================================
@@ -166,11 +172,16 @@ export default function MobileAppSettingsComponent() {
     supportWhatsapp: null,
     supportEmail: null,
     supportPhone: null,
+    promoBanner1: null,
+    promoBanner2: null,
+    promoBanners: [],
+    promoDisplayMode: 'carousel' as const,
     apiBaseUrl: null,
     apiDocsUrl: null,
   });
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState<string | null>(null); // tracks which field is uploading
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -197,7 +208,16 @@ export default function MobileAppSettingsComponent() {
           banners = data.banners;
         }
       }
-      setSettings({ ...data, banners });
+      // Parse promoBanners if it's a string
+      let promoBanners: PromoBannerItem[] = [];
+      if (data.promoBanners) {
+        if (typeof data.promoBanners === 'string') {
+          try { promoBanners = JSON.parse(data.promoBanners); } catch { promoBanners = []; }
+        } else if (Array.isArray(data.promoBanners)) {
+          promoBanners = data.promoBanners;
+        }
+      }
+      setSettings({ ...data, banners, promoBanners, promoDisplayMode: data.promoDisplayMode || 'carousel' });
     } catch (err: any) {
       console.error('Failed to fetch mobile settings:', err);
       setError(err.response?.data?.message || 'Failed to load mobile settings');
@@ -221,6 +241,23 @@ export default function MobileAppSettingsComponent() {
     }
   };
 
+  // Image upload handler
+  const handleImageUpload = async (file: File, onSuccess: (url: string) => void, fieldKey: string) => {
+    try {
+      setUploadingBanner(fieldKey);
+      const result = await uploadMobileBannerImage(file);
+      if (result.success) {
+        onSuccess(result.imageUrl);
+        toast({ title: '✅ Image Uploaded', description: `${result.fileName} uploaded successfully` });
+      }
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      toast({ title: 'Upload Failed', description: err.response?.data?.message || 'Failed to upload image', variant: 'destructive' });
+    } finally {
+      setUploadingBanner(null);
+    }
+  };
+
   // Banner helpers
   const parsedBanners: BannerItem[] = (() => {
     if (!settings.banners) return [];
@@ -231,13 +268,7 @@ export default function MobileAppSettingsComponent() {
   })();
 
   const addBanner = () => {
-    const newBanner: BannerItem = {
-      imageUrl: '',
-      title: '',
-      linkUrl: '',
-      isActive: true,
-      order: parsedBanners.length,
-    };
+    const newBanner: BannerItem = { imageUrl: '', title: '', linkUrl: '', isActive: true, order: parsedBanners.length };
     setSettings({ ...settings, banners: [...parsedBanners, newBanner] });
   };
 
@@ -250,6 +281,31 @@ export default function MobileAppSettingsComponent() {
   const removeBanner = (index: number) => {
     const updated = parsedBanners.filter((_, i) => i !== index);
     setSettings({ ...settings, banners: updated });
+  };
+
+  // Promo banner helpers
+  const parsedPromoBanners: PromoBannerItem[] = (() => {
+    if (!settings.promoBanners) return [];
+    if (typeof settings.promoBanners === 'string') {
+      try { return JSON.parse(settings.promoBanners); } catch { return []; }
+    }
+    return settings.promoBanners as PromoBannerItem[];
+  })();
+
+  const addPromoBanner = () => {
+    const newPromo: PromoBannerItem = { imageUrl: '', title: '', linkUrl: '', isActive: true, order: parsedPromoBanners.length };
+    setSettings({ ...settings, promoBanners: [...parsedPromoBanners, newPromo] });
+  };
+
+  const updatePromoBanner = (index: number, field: keyof PromoBannerItem, value: any) => {
+    const updated = [...parsedPromoBanners];
+    (updated[index] as any)[field] = value;
+    setSettings({ ...settings, promoBanners: updated });
+  };
+
+  const removePromoBanner = (index: number) => {
+    const updated = parsedPromoBanners.filter((_, i) => i !== index);
+    setSettings({ ...settings, promoBanners: updated });
   };
 
   const update = (field: keyof MobileSettings, value: any) => {
@@ -366,6 +422,10 @@ export default function MobileAppSettingsComponent() {
             <TabsTrigger value="banners" className="rounded-lg px-3.5 py-2 text-sm font-medium gap-1.5">
               <ImageIcon className="w-3.5 h-3.5" />
               Banners
+            </TabsTrigger>
+            <TabsTrigger value="promo" className="rounded-lg px-3.5 py-2 text-sm font-medium gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5" />
+              Promo
             </TabsTrigger>
             <TabsTrigger value="ads" className="rounded-lg px-3.5 py-2 text-sm font-medium gap-1.5">
               <Megaphone className="w-3.5 h-3.5" />
@@ -577,99 +637,61 @@ export default function MobileAppSettingsComponent() {
                 <SectionHeader
                   icon={ImageIcon}
                   title="Home Banners / Carousel"
-                  description="Manage promotional banners on the app's home screen"
+                  description="Upload promotional banner images for the app home screen carousel"
                   iconColor="text-emerald-600"
                   bgColor="bg-emerald-100 dark:bg-emerald-900/30"
                 />
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 mt-2">
+                  <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Recommended Banner Size</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-300"><strong>1200 × 500 px</strong> (or 1080 × 450 px) • JPG, PNG, WebP • Max 10 MB • Landscape</p>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-5">
-                <ToggleRow
-                  label="Enable Banners"
-                  description="Show promotional banner carousel on home screen"
-                  checked={settings.bannersEnabled}
-                  onCheckedChange={(v) => update('bannersEnabled', v)}
-                  icon={ImageIcon}
-                  iconColor="text-emerald-600"
-                />
-
+                <ToggleRow label="Enable Banners" description="Show promotional banner carousel on home screen" checked={settings.bannersEnabled} onCheckedChange={(v) => update('bannersEnabled', v)} icon={ImageIcon} iconColor="text-emerald-600" />
                 {settings.bannersEnabled && (
                   <>
                     <Separator />
                     <div className="flex items-center justify-between">
                       <p className="font-medium text-sm">Banner Items ({parsedBanners.length})</p>
-                      <Button variant="outline" size="sm" onClick={addBanner} className="gap-1.5">
-                        <Plus className="w-3.5 h-3.5" />
-                        Add Banner
-                      </Button>
+                      <Button variant="outline" size="sm" onClick={addBanner} className="gap-1.5"><Plus className="w-3.5 h-3.5" />Add Banner</Button>
                     </div>
-
                     {parsedBanners.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">No banners added yet. Click "Add Banner" to create one.</p>
-                      </div>
+                      <div className="text-center py-8 text-muted-foreground"><ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No banners yet. Click "Add Banner" to create one.</p></div>
                     )}
-
                     <div className="space-y-3">
                       {parsedBanners.map((banner, index) => (
-                        <div
-                          key={index}
-                          className="border rounded-xl p-4 bg-card hover:border-primary/30 transition-colors space-y-3"
-                        >
+                        <div key={index} className="border rounded-xl p-4 bg-card hover:border-primary/30 transition-colors space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <GripVertical className="w-4 h-4 text-muted-foreground" />
                               <Badge variant="outline" className="text-xs">Banner #{index + 1}</Badge>
-                              {banner.isActive ? (
-                                <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Active</Badge>
-                              ) : (
-                                <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
-                              )}
+                              {banner.isActive ? <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Active</Badge> : <Badge variant="secondary" className="text-[10px]">Inactive</Badge>}
                             </div>
                             <div className="flex gap-2">
-                              <Switch
-                                checked={banner.isActive}
-                                onCheckedChange={(v) => updateBanner(index, 'isActive', v)}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => removeBanner(index)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <Switch checked={banner.isActive} onCheckedChange={(v) => updateBanner(index, 'isActive', v)} />
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeBanner(index)}><Trash2 className="w-4 h-4" /></Button>
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Title</Label>
-                              <Input
-                                value={banner.title}
-                                onChange={(e) => updateBanner(index, 'title', e.target.value)}
-                                placeholder="Banner title"
-                                className="h-9 text-sm"
-                              />
+                              <Input value={banner.title} onChange={(e) => updateBanner(index, 'title', e.target.value)} placeholder="Banner title" className="h-9 text-sm" />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">Image URL</Label>
-                              <Input
-                                value={banner.imageUrl}
-                                onChange={(e) => updateBanner(index, 'imageUrl', e.target.value)}
-                                placeholder="https://..."
-                                className="h-9 text-sm"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Link URL (on tap)</Label>
-                              <Input
-                                value={banner.linkUrl}
-                                onChange={(e) => updateBanner(index, 'linkUrl', e.target.value)}
-                                placeholder="https://... or screen://quizzes"
-                                className="h-9 text-sm"
-                              />
+                              <Label className="text-xs flex items-center gap-1"><Upload className="w-3 h-3" /> Upload Image</Label>
+                              <div className="flex gap-2">
+                                <Input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="h-9 text-sm" disabled={uploadingBanner === `banner-${index}`} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, (url) => updateBanner(index, 'imageUrl', url), `banner-${index}`); }} />
+                                {uploadingBanner === `banner-${index}` && <Loader2 className="w-5 h-5 animate-spin text-primary mt-2" />}
+                              </div>
+                              {banner.imageUrl && <p className="text-[10px] text-emerald-600 truncate">✅ {banner.imageUrl}</p>}
                             </div>
                           </div>
+                          {banner.imageUrl && (
+                            <div className="rounded-lg overflow-hidden border bg-muted"><img src={banner.imageUrl} alt={banner.title || `Banner ${index + 1}`} className="w-full h-32 object-cover" onError={(e) => { (e.target as any).style.display = 'none'; }} /></div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -678,6 +700,88 @@ export default function MobileAppSettingsComponent() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* ==================== PROMO BANNERS ==================== */}
+          <TabsContent value="promo" className="space-y-6">
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader>
+                <SectionHeader icon={ImageIcon} title="Promotional Banners" description="Upload multiple promotional banners — choose carousel or list display" iconColor="text-rose-600" bgColor="bg-rose-100 dark:bg-rose-900/30" />
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 mt-2">
+                  <Info className="w-4 h-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">Recommended Promo Size</p>
+                    <p className="text-xs text-rose-600 dark:text-rose-300"><strong>1080 × 400 px</strong> (or 1200 × 450 px) • JPG, PNG, WebP • Max 10 MB • Full-width strip</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Display Mode */}
+                <div className="flex items-center justify-between p-4 rounded-xl border bg-card">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-muted/60 text-rose-600"><GalleryHorizontal className="w-4 h-4" /></div>
+                    <div>
+                      <p className="font-medium text-sm">Display Mode</p>
+                      <p className="text-xs text-muted-foreground">How promos appear on the homepage</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+                    <button type="button" className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${settings.promoDisplayMode === 'carousel' ? 'bg-background shadow-sm text-rose-600' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => update('promoDisplayMode', 'carousel')}>
+                      <GalleryHorizontal className="w-3.5 h-3.5 inline mr-1" />Carousel
+                    </button>
+                    <button type="button" className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${settings.promoDisplayMode === 'list' ? 'bg-background shadow-sm text-rose-600' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => update('promoDisplayMode', 'list')}>
+                      <LayoutList className="w-3.5 h-3.5 inline mr-1" />List
+                    </button>
+                  </div>
+                </div>
+
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-sm">Promo Banners ({parsedPromoBanners.length})</p>
+                  <Button variant="outline" size="sm" onClick={addPromoBanner} className="gap-1.5"><Plus className="w-3.5 h-3.5" />Add Promo</Button>
+                </div>
+
+                {parsedPromoBanners.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground"><ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No promos yet. Click "Add Promo" to create one.</p></div>
+                )}
+
+                <div className="space-y-3">
+                  {parsedPromoBanners.map((promo, index) => (
+                    <div key={index} className="border rounded-xl p-4 bg-card hover:border-rose-300 transition-colors space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="w-4 h-4 text-muted-foreground" />
+                          <Badge variant="outline" className="text-xs">Promo #{index + 1}</Badge>
+                          {promo.isActive ? <Badge className="bg-rose-100 text-rose-700 text-[10px]">Active</Badge> : <Badge variant="secondary" className="text-[10px]">Inactive</Badge>}
+                        </div>
+                        <div className="flex gap-2">
+                          <Switch checked={promo.isActive} onCheckedChange={(v) => updatePromoBanner(index, 'isActive', v)} />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removePromoBanner(index)}><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Title</Label>
+                          <Input value={promo.title || ''} onChange={(e) => updatePromoBanner(index, 'title', e.target.value)} placeholder="Promo title" className="h-9 text-sm" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs flex items-center gap-1"><Upload className="w-3 h-3" /> Upload Image</Label>
+                          <div className="flex gap-2">
+                            <Input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="h-9 text-sm" disabled={uploadingBanner === `promo-${index}`} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, (url) => updatePromoBanner(index, 'imageUrl', url), `promo-${index}`); }} />
+                            {uploadingBanner === `promo-${index}` && <Loader2 className="w-5 h-5 animate-spin text-rose-500 mt-2" />}
+                          </div>
+                          {promo.imageUrl && <p className="text-[10px] text-emerald-600 truncate">✅ {promo.imageUrl}</p>}
+                        </div>
+                      </div>
+                      {promo.imageUrl && (
+                        <div className="rounded-lg overflow-hidden border bg-muted"><img src={promo.imageUrl} alt={promo.title || `Promo ${index + 1}`} className="w-full h-28 object-cover" onError={(e) => { (e.target as any).style.display = 'none'; }} /></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
 
           {/* ==================== ADS ==================== */}
           <TabsContent value="ads" className="space-y-6">

@@ -5,8 +5,10 @@ import {
   getMobileSettings,
   updateMobileSettings,
   getPublicMobileSettings,
+  uploadMobileBannerImage,
 } from '../controllers/mobileSettingsController';
 import { cacheResponse } from '../middleware/cacheMiddleware';
+import { uploadMobileBanner } from '../middleware/uploadMiddleware';
 
 const router = Router();
 
@@ -26,5 +28,14 @@ router.get('/', authenticateToken, isAdmin, getMobileSettings);
 
 // PUT /api/admin/mobile-settings - Update mobile settings (admin only)
 router.put('/', authenticateToken, isAdmin, updateMobileSettings);
+
+// POST /api/admin/mobile-settings/upload-image - Upload banner/promo image (admin only)
+router.post(
+  '/upload-image',
+  authenticateToken,
+  isAdmin,
+  uploadMobileBanner.single('image'),
+  uploadMobileBannerImage
+);
 
 export default router;

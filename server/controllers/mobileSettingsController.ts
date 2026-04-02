@@ -6,6 +6,40 @@ import { db } from '../db';
 import { mobileAppSettings } from '@shared/schema';
 
 // ============================================
+// UPLOAD MOBILE BANNER IMAGE (Admin)
+// ============================================
+export const uploadMobileBannerImage = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file provided',
+      });
+    }
+
+    // Build the public URL path
+    const imageUrl = `/uploads/mobile-banners/${req.file.filename}`;
+
+    console.log('[uploadMobileBannerImage] Uploaded:', imageUrl);
+
+    res.json({
+      success: true,
+      message: 'Image uploaded successfully',
+      imageUrl,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+    });
+  } catch (error: any) {
+    console.error('[uploadMobileBannerImage] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload image',
+    });
+  }
+};
+
+// ============================================
 // GET MOBILE APP SETTINGS (Admin)
 // ============================================
 export const getMobileSettings = async (req: Request, res: Response) => {
@@ -38,6 +72,8 @@ export const getMobileSettings = async (req: Request, res: Response) => {
           showLiveClasses: false,
           popupEnabled: false,
           adInterstitialEnabled: false,
+          promoBanners: JSON.stringify([]),
+          promoDisplayMode: 'carousel',
         }).$returningId();
 
       const [createdSettings] = await db
@@ -128,6 +164,14 @@ export const updateMobileSettings = async (req: Request, res: Response) => {
     if (body.supportEmail !== undefined) updateData.supportEmail = body.supportEmail?.trim() || null;
     if (body.supportPhone !== undefined) updateData.supportPhone = body.supportPhone?.trim() || null;
 
+    // Legacy Promotional Banners (kept for backward compat)
+    if (body.promoBanner1 !== undefined) updateData.promoBanner1 = typeof body.promoBanner1 === 'string' ? body.promoBanner1 : JSON.stringify(body.promoBanner1);
+    if (body.promoBanner2 !== undefined) updateData.promoBanner2 = typeof body.promoBanner2 === 'string' ? body.promoBanner2 : JSON.stringify(body.promoBanner2);
+
+    // NEW: Multiple Promotional Banners
+    if (body.promoBanners !== undefined) updateData.promoBanners = typeof body.promoBanners === 'string' ? body.promoBanners : JSON.stringify(body.promoBanners);
+    if (body.promoDisplayMode !== undefined) updateData.promoDisplayMode = body.promoDisplayMode?.trim() || 'carousel';
+
     // API Config
     if (body.apiBaseUrl !== undefined) updateData.apiBaseUrl = body.apiBaseUrl?.trim() || null;
     if (body.apiDocsUrl !== undefined) updateData.apiDocsUrl = body.apiDocsUrl?.trim() || null;
@@ -208,6 +252,8 @@ export const getPublicMobileSettings = async (req: Request, res: Response) => {
           supportPhone: null,
           apiBaseUrl: null,
           apiDocsUrl: null,
+          promoBanners: [],
+          promoDisplayMode: 'carousel',
         },
       });
     }
@@ -246,6 +292,10 @@ export const getPublicMobileSettings = async (req: Request, res: Response) => {
         supportWhatsapp: settings.supportWhatsapp,
         supportEmail: settings.supportEmail,
         supportPhone: settings.supportPhone,
+        promoBanner1: settings.promoBanner1,
+        promoBanner2: settings.promoBanner2,
+        promoBanners: settings.promoBanners,
+        promoDisplayMode: settings.promoDisplayMode,
         apiBaseUrl: settings.apiBaseUrl,
         apiDocsUrl: settings.apiDocsUrl,
       },
